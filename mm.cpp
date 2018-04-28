@@ -7,21 +7,22 @@
 #include <string.h>
 #include <algorithm>
 #include <mutex>
+#include<string>
 #include <thread>
 #include <chrono>
 
 struct dataValues
 {
     std::string name;
-    int currentMemory;
-    int maxPeak;
-    int memoryReserved;
+    double currentMemory;
+    double maxPeak;
+    double memoryReserved;
 };
 
 struct containerValues
 {
     std::string containerID;
-    int currMemory;
+    double currMemory;
 };
 
 void setVMCurrentMemoryUsage(struct dataValues* & vm);
@@ -31,7 +32,7 @@ std::vector<std::thread> monitorThreads;
 // 2       3      4     5
 std::vector<int> hostStats;
 static std::vector<struct dataValues*> vm;
-static std::vector<struct currMemory*> container;
+static std::vector<struct containerValues*> container;
 
 
 
@@ -54,7 +55,8 @@ void startMonitoring()
     for(int i=0;i<vm.size();i++) {
 
         monitorThreads.push_back(std::thread([=] {
-            int timer  = 1, maxMem =0;
+            int timer  = 1;
+            double maxMem =0;
             while(1) {
                 std::cout<<vm[i]->name<<std::endl;
                 setVMCurrentMemoryUsage(vm[i]);
@@ -107,6 +109,7 @@ void  MemoryMonitor() {
                 {
                     struct dataValues* dv = new struct dataValues();
                     dv->currentMemory=dv->maxPeak=0;
+                    dv->memoryReserved = 16000000;
                     dv->name=to;
                     vm.push_back(dv);
                 }
@@ -210,16 +213,34 @@ void setHostCurrentMemoryUsage()
 //
 //    }
 
-void MonitorContainerMemory()
+double getdValue(std::string s)
 {
-    std::string data = runCommand("docker stats --format \"table {{.Container}} {{.MemUsage}}\" --no-stream");
+    int j=0;
+    double ret=0;
 
-    int i=0,j=0;
+    for(int i=0;i<s.length();i++)
+    {
+        if(s[i]=='.') j=i;
+        else
+        {
+            ret= (ret*10)+ s[i]-48;
+        }
+    }
+
+    return ret/(pow(10,s.length()-j));
+}
+
+std::mutex m1;
+
+void collectContainerStats()
+{
+    std::lock_guard<std::mutex> locker(m1);
+    container.clear();
+
+    std::string data = runCommand("docker stats --format \"{{.Container}} {{.MemUsage}}\" --no-stream");
 
     std::stringstream ss(data);
     std::string to;
-
-    std::getline(ss,to,'\n');
 
     while(!ss.eof())
     {
@@ -227,43 +248,46 @@ void MonitorContainerMemory()
 
         std::stringstream ss1(to);
 
-        while(!ss1.eof())
-        {
-            std::getline(ss1,to,' ');
+        struct containerValues* cv = new struct containerValues();
 
-            if(to.length()>0)
-            {
-                std::cout<<to<<std::endl;
+        std::getline(ss1,to,' ');
 
-            }
-        }
+        cv->containerID = to;
 
+        std::getline(ss1,to,' ');
+
+        cv->currMemory = getdValue(to);
+
+        if(cv->currMemory!=0)
+            container.push_back(cv);
+        else
+            free(cv);
 
     }
 
+    for(int i=0;i<container.size();i++)
+        std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
+
+}
+
+void readContainerStats() {
+    std::lock_guard<std::mutex> locker(m1);
+    for(int i=0;i<container.size();i++)
+        std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
+}
 
 
 
-
+void MonitorContainerMemory()
+{
     monitorThreads.push_back(std::thread([=] {
 
-        int timer  = 1;
-
-        while(1)
-        {
-            if (timer == 30)
-            {
-                for(int i=0;i<vm.size();i++)
-                {
-                    std::cout <<"30 Sec Read: "<<vm[i]->maxPeak << std::endl;
-                }
-                timer=0;
+            while (1) {
+                collectContainerStats();
+                std::this_thread::sleep_for(std::chrono::seconds(1));
             }
-            std::this_thread::sleep_for (std::chrono::seconds(1));
-            timer+=1;
-        }
-    }));
 
+        }));
 }
 
 
@@ -274,6 +298,8 @@ int main(int argc,char* argv[]) {
     std::this_thread::sleep_for (std::chrono::seconds(5));
     startProcessing();
     MonitorContainerMemory();
+    std::this_thread::sleep_for (std::chrono::seconds(5));
+    //readContainerStats();
 
     for(auto& t : monitorThreads)
     {
