@@ -54,7 +54,7 @@ void startMonitoring()
                 std::cout<<vm[i].second->currentMemory<<" ";
                 maxMem = std::max(vm[i].second-> currentMemory,maxMem);
                 timer++;
-                if(timer==10)
+                if(timer==30)
                 {
                     timer=0;
                     vm[i].second->maxPeak = maxMem;
