@@ -12,18 +12,26 @@
 
 struct dataValues
 {
+    std::string name;
     int currentMemory;
     int maxPeak;
+    int memoryReserved;
 };
 
-void setVMCurrentMemoryUsage(std::pair<std::string,struct dataValues*>& vm);
+struct containerValues
+{
+    std::string containerID;
+    int currMemory;
+};
+
+void setVMCurrentMemoryUsage(struct dataValues* & vm);
 
 std::vector<std::thread> monitorThreads;
 //swpd   free   buff  cache
 // 2       3      4     5
 std::vector<int> hostStats;
-static std::vector<std::pair<std::string,struct dataValues*>> vm;
-static std::vector<int> max_peak;
+static std::vector<struct dataValues*> vm;
+static std::vector<struct currMemory*> container;
 
 
 
@@ -48,17 +56,17 @@ void startMonitoring()
         monitorThreads.push_back(std::thread([=] {
             int timer  = 1, maxMem =0;
             while(1) {
-                std::cout<<vm[i].first<<std::endl;
+                std::cout<<vm[i]->name<<std::endl;
                 setVMCurrentMemoryUsage(vm[i]);
                 std::this_thread::sleep_for (std::chrono::seconds(1));
-                std::cout<<vm[i].second->currentMemory<<" ";
-                maxMem = std::max(vm[i].second-> currentMemory,maxMem);
+                std::cout<<vm[i]->currentMemory<<" ";
+                maxMem = std::max(vm[i]-> currentMemory,maxMem);
                 timer++;
                 if(timer==30)
                 {
                     timer=0;
-                    vm[i].second->maxPeak = maxMem;
-                    std::cout<<"30-------------"<<vm[i].second->maxPeak<<std::endl;
+                    vm[i]->maxPeak = maxMem;
+                    std::cout<<"30-------------"<<vm[i]->maxPeak<<std::endl;
                     maxMem=0;
                 }
             }
@@ -71,6 +79,9 @@ void startMonitoring()
 }
 
 void  MemoryMonitor() {
+
+
+    //Monitor VM
 
     std::string data = runCommand("/usr/bin/virsh list| /bin/grep running");
 
@@ -96,7 +107,8 @@ void  MemoryMonitor() {
                 {
                     struct dataValues* dv = new struct dataValues();
                     dv->currentMemory=dv->maxPeak=0;
-                    vm.push_back(make_pair(to,dv));
+                    dv->name=to;
+                    vm.push_back(dv);
                 }
                 j++;
             }
@@ -106,22 +118,23 @@ void  MemoryMonitor() {
 
     }
 
+
 }
 
-void setVMCurrentMemoryUsage(std::pair<std::string,struct dataValues*>& vm)
+void setVMCurrentMemoryUsage(struct dataValues*& vm)
 {
-     std::string data = runCommand(("/usr/bin/virsh dommemstat " + vm.first).c_str());
+     std::string data = runCommand(("/usr/bin/virsh dommemstat " + vm->name).c_str());
 
      std::regex r2("unused (.*)");
      std::regex r1("available (.*)");
      std::smatch s;
 
      regex_search(data,s,r1);
-     vm.second->currentMemory = stod(s.str(1));
+     vm->currentMemory = stod(s.str(1));
 
      regex_search(data,s,r2);
 
-    vm.second->currentMemory -= stod(s.str(1));
+    vm->currentMemory -= stod(s.str(1));
 }
 
 void startProcessing()
@@ -137,7 +150,7 @@ void startProcessing()
             {
                 for(int i=0;i<vm.size();i++)
                 {
-                    std::cout <<"30 Sec Read: "<<vm[i].second->maxPeak << std::endl;
+                    std::cout <<"30 Sec Read: "<<vm[i]->maxPeak << std::endl;
                 }
                 timer=0;
             }
@@ -197,6 +210,62 @@ void setHostCurrentMemoryUsage()
 //
 //    }
 
+void MonitorContainerMemory()
+{
+    std::string data = runCommand("docker stats --format \"table {{.Container}} {{.MemUsage}}\" --no-stream");
+
+    int i=0,j=0;
+
+    std::stringstream ss(data);
+    std::string to;
+
+    std::getline(ss,to,'\n');
+
+    while(!ss.eof())
+    {
+        std::getline(ss,to,'\n');
+
+        std::stringstream ss1(to);
+
+        while(!ss1.eof())
+        {
+            std::getline(ss1,to,' ');
+
+            if(to.length()>0)
+            {
+                std::cout<<to<<std::endl;
+
+            }
+        }
+
+
+    }
+
+
+
+
+
+    monitorThreads.push_back(std::thread([=] {
+
+        int timer  = 1;
+
+        while(1)
+        {
+            if (timer == 30)
+            {
+                for(int i=0;i<vm.size();i++)
+                {
+                    std::cout <<"30 Sec Read: "<<vm[i]->maxPeak << std::endl;
+                }
+                timer=0;
+            }
+            std::this_thread::sleep_for (std::chrono::seconds(1));
+            timer+=1;
+        }
+    }));
+
+}
+
 
 int main(int argc,char* argv[]) {
 
@@ -204,6 +273,7 @@ int main(int argc,char* argv[]) {
     startMonitoring();
     std::this_thread::sleep_for (std::chrono::seconds(5));
     startProcessing();
+    MonitorContainerMemory();
 
     for(auto& t : monitorThreads)
     {
