@@ -152,9 +152,9 @@ void claim_memory_vm(vector<dataValues *> claim_list)
          //long claim_val = (claim_list[i]->memoryReserved - claim_list[i]->maxPeak)/2;
          int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
          claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
-         //cout<<"claiming "<<claim_val<<" memory from "<<claim_list[i]->name<<"\n";
+         cout<<"claiming "<<claim_val<<" memory from "<<claim_list[i]->name<<"\n";
          runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
-	 cout<<"Max reserved for "<<claim_list[i]->name<<"  is  "<<claim_list[i]->memoryReserved<<"\n";   
+	 //cout<<"Max reserved for "<<claim_list[i]->name<<"  is  "<<claim_list[i]->memoryReserved<<"\n";   
     }
 }
 
@@ -262,8 +262,8 @@ void collectContainerStats()
             free(cv);
 
     }
-    for(int i=0;i<container.size();i++)
-        std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
+ //   for(int i=0;i<container.size();i++)
+        //std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
 }
 
 void readContainerStats(int mem) {
