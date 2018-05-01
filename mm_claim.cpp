@@ -149,10 +149,11 @@ void claim_memory_vm(vector<dataValues *> claim_list)
     cout<<"claiming memory"<<"\n";
     for(int i=0;i<claim_list.size();i++)
     {
-         long claim_val = (claim_list[i]->memoryReserved - claim_list[i]->maxPeak)/2;
+         //long claim_val = (claim_list[i]->memoryReserved - claim_list[i]->maxPeak)/2;
+         int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
          claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
          //cout<<"claiming "<<claim_val<<" memory from "<<claim_list[i]->name<<"\n";
-         runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1000) + "'").c_str());
+         runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
 	 cout<<"Max reserved for "<<claim_list[i]->name<<"  is  "<<claim_list[i]->memoryReserved<<"\n";   
     }
 }
@@ -169,7 +170,8 @@ void startProcessing()
                 for(int i=0;i<vm.size();i++)
                 {
                         //cout<<vm[i]->memoryReserved<<" "<<vm[i]->maxPeak<<"\n";
-                        if(vm[i]->memoryReserved - vm[i]->maxPeak > 1048576)
+                        int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
+                        if(claim_val > 1572864)
                              claim_list.push_back(vm[i]);
                         //std::cout <<"30 Sec Read: "<<vm[i].second->maxPeak << std::endl;
                 }
