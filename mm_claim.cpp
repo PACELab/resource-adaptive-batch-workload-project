@@ -113,7 +113,7 @@ void  MemoryMonitor() {
                 {
                     struct dataValues* dv = new struct dataValues();
                     dv->currentMemory=dv->maxPeak=0;
-                    dv->memoryReserved = 16000000;
+                    dv->memoryReserved = 16000000  - 16000000*(1/10);
                     dv->name=to;
                     vm.push_back(dv);
                 }
@@ -148,7 +148,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
 
 void claim_memory_vm(vector<dataValues *> claim_list)
 {
-    cout<<"claiming memory"<<"\n";
+    //cout<<"claiming memory"<<"\n";
     for(int i=0;i<claim_list.size();i++)
     {
          //long claim_val = (claim_list[i]->memoryReserved - claim_list[i]->maxPeak)/2;
@@ -156,7 +156,7 @@ void claim_memory_vm(vector<dataValues *> claim_list)
          claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
          time_t t = std::time(0);
      	 long int now = static_cast<long int> (t);
-         cout<<to_string(now)<<" "<<"claiming "<<claim_val<<" memory from "<<claim_list[i]->name<<"\n";
+         cout<<to_string(now)<<" "<<"claiming "<<claim_val<<"kb"<<" memory from "<<claim_list[i]->name<<"\n";
          runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
 	 //cout<<"Max reserved for "<<claim_list[i]->name<<"  is  "<<claim_list[i]->memoryReserved<<"\n";   
     }
