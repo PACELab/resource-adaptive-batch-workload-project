@@ -72,7 +72,9 @@ void startMonitoring()
                 {
                     timer=0;
                     vm[i]->maxPeak = maxMem;
-	            cout<<"Max mem: "<<maxMem<<"\n";
+                    time_t t = std::time(0);
+     		    long int now = static_cast<long int> (t);
+	            cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
                     //std::cout<<"30-------------"<<vm[i]->maxPeak<<std::endl;
                     maxMem=0;
                 }
@@ -152,7 +154,9 @@ void claim_memory_vm(vector<dataValues *> claim_list)
          //long claim_val = (claim_list[i]->memoryReserved - claim_list[i]->maxPeak)/2;
          int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
          claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
-         cout<<"claiming "<<claim_val<<" memory from "<<claim_list[i]->name<<"\n";
+         time_t t = std::time(0);
+     	 long int now = static_cast<long int> (t);
+         cout<<to_string(now)<<" "<<"claiming "<<claim_val<<" memory from "<<claim_list[i]->name<<"\n";
          runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
 	 //cout<<"Max reserved for "<<claim_list[i]->name<<"  is  "<<claim_list[i]->memoryReserved<<"\n";   
     }
