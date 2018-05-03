@@ -193,8 +193,6 @@ void claim_memory_vm(vector<dataValues *> claim_list)
      	 long int now = static_cast<long int> (t);
 
           //ADD AHMAD SCRIPT HERE
-
-         //cout<<to_string(now)<<" "<<"claiming "<<claim_val<<"kb"<<" memory from "<<claim_list[i]->name<<"\n";
          //runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
     }
 }
@@ -394,7 +392,7 @@ void monitorMemPressure(char* memoryPressureNotificationFile)
         if (efd == -1)
             err(1, "eventfd() failed");
 
-        ret = snprintf(line, LINE_MAX, "%d %d medium", efd, cfd);
+        ret = snprintf(line, LINE_MAX, "%d %d low", efd, cfd);
         if (ret >= LINE_MAX)
             errx(1, "Arguments string is too long");
 
@@ -427,7 +425,7 @@ void monitorMemPressure(char* memoryPressureNotificationFile)
 
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
-            //TO ADD: AHMAD - ADD LINES HERE
+            printf("\n\n\nLOW PRESSURE LEVEL REACHED\n\n\n");
         }
 
     }));
