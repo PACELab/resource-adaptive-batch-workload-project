@@ -87,7 +87,7 @@ void startMonitoring()
                 if(timer==30)
                 {
                     timer=0;
-                    vm[i]->maxPeak = maxMem;
+                    vm[i]->maxPeak = std::max(maxMem,((vm[i]->original_limit)/10));
                     time_t t = std::time(0);
      		    long int now = static_cast<long int> (t);
 	            cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
@@ -163,7 +163,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
      if(vm->original_limit==0)
      {
            vm->original_limit = stod(s.str(1));
-           vm->memoryReserved = vm->original_limit - (vm->original_limit/10);
+           //vm->memoryReserved = vm->original_limit - (vm->original_limit/10);
      }
      vm->currentMemory = stod(s.str(1));
 
@@ -320,7 +320,7 @@ void monitorMemoryStatsByVM(char* memStatsfile,struct dataValues* dv)
     monitorThreads.push_back(std::thread([=] {
 
     while(1) {
-        std::cout << memStatsfile << std::endl;
+        //std::cout << memStatsfile << std::endl;
 
         std::ifstream in(memStatsfile);
 
