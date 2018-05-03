@@ -21,6 +21,8 @@ struct dataValues
     double maxPeak;
     double memoryReserved;
     ofstream outfile;
+    long total_claimed;
+    double original_limit;
 };
 
 struct containerValues
@@ -37,7 +39,6 @@ std::vector<std::thread> monitorThreads;
 std::vector<int> hostStats;
 static std::vector<struct dataValues*> vm;
 static std::vector<struct containerValues*> container;
-
 
 
 std::string runCommand(const char *s)
@@ -113,8 +114,10 @@ void  MemoryMonitor() {
                 {
                     struct dataValues* dv = new struct dataValues();
                     dv->currentMemory=dv->maxPeak=0;
-                    dv->memoryReserved = 16000000  - 16000000*(1/10);
+                    dv->original_limit = 0;
+                    //dv->memoryReserved = 16000000  - 16000000*(1/10);
                     dv->name=to;
+                    dv->total_claimed=0;
                     vm.push_back(dv);
                 }
                 j++;
@@ -133,12 +136,18 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
      std::smatch s;
 
      regex_search(data,s,r1);
+     if(vm->original_limit==0)
+     {
+           vm->original_limit = stod(s.str(1));
+           vm->memoryReserved = vm->original_limit - (vm->original_limit/10);
+     }
      vm->currentMemory = stod(s.str(1));
 
      regex_search(data,s,r2);
 
      time_t t = std::time(0);
      long int now = static_cast<long int> (t);
+     cout<<"Total claimed from "<<vm->name<<" "<<vm->total_claimed<<"\n";
      vm->currentMemory -= stod(s.str(1));
      vm->outfile.open(vm->name,std::ios_base::app);
      vm->outfile<<to_string(now)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->memoryReserved);
@@ -148,17 +157,17 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
 
 void claim_memory_vm(vector<dataValues *> claim_list)
 {
-    //cout<<"claiming memory"<<"\n";
     for(int i=0;i<claim_list.size();i++)
     {
-         //long claim_val = (claim_list[i]->memoryReserved - claim_list[i]->maxPeak)/2;
          int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
          claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
+         claim_list[i]->total_claimed+=claim_val;
+ 
          time_t t = std::time(0);
      	 long int now = static_cast<long int> (t);
-         cout<<to_string(now)<<" "<<"claiming "<<claim_val<<"kb"<<" memory from "<<claim_list[i]->name<<"\n";
-         runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
-	 //cout<<"Max reserved for "<<claim_list[i]->name<<"  is  "<<claim_list[i]->memoryReserved<<"\n";   
+
+         //cout<<to_string(now)<<" "<<"claiming "<<claim_val<<"kb"<<" memory from "<<claim_list[i]->name<<"\n";
+         //runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
     }
 }
 
@@ -173,9 +182,8 @@ void startProcessing()
             {
                 for(int i=0;i<vm.size();i++)
                 {
-                        //cout<<vm[i]->memoryReserved<<" "<<vm[i]->maxPeak<<"\n";
                         int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
-                        if(claim_val > 1572864)
+                        if(claim_val > 2091752)
                              claim_list.push_back(vm[i]);
                         //std::cout <<"30 Sec Read: "<<vm[i].second->maxPeak << std::endl;
                 }
