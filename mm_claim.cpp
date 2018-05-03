@@ -163,7 +163,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
      if(vm->original_limit==0)
      {
            vm->original_limit = stod(s.str(1));
-           //vm->memoryReserved = vm->original_limit - (vm->original_limit/10);
+           vm->memoryReserved = vm->original_limit;
      }
      vm->currentMemory = stod(s.str(1));
 
