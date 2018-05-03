@@ -171,7 +171,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
 
      time_t t = std::time(0);
      long int now = static_cast<long int> (t);
-     cout<<"Total claimed from "<<vm->name<<" "<<vm->total_claimed<<"\n";
+    // cout<<"Total claimed from "<<vm->name<<" "<<vm->total_claimed<<"\n";
      vm->currentMemory -= stod(s.str(1));
      vm->outfile.open(vm->name,std::ios_base::app);
      vm->outfile<<to_string(now)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->memoryReserved);
@@ -183,12 +183,16 @@ void claim_memory_vm(vector<dataValues *> claim_list)
 {
     for(int i=0;i<claim_list.size();i++)
     {
-         int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
+         int claim_val = claim_list[i]->memoryReserved  - (claim_list[i]->maxPeak + 0.25*claim_list[i]->maxPeak);
          claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
          claim_list[i]->total_claimed+=claim_val;
  
+         cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
+ 
          time_t t = std::time(0);
      	 long int now = static_cast<long int> (t);
+
+          //ADD AHMAD SCRIPT HERE
 
          //cout<<to_string(now)<<" "<<"claiming "<<claim_val<<"kb"<<" memory from "<<claim_list[i]->name<<"\n";
          //runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
