@@ -177,6 +177,9 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
      {
 		cout<<"we have to kill the container!!!!!!!!!";
                 //AHMAD'S SCRIPT RUNS HERE
+                system("/home/ahmad/scripts/stop_nm.sh");
+		//update the vm->memoryReserved and vm->total_claimed here.
+                
      }
      vm->outfile.open(vm->name,std::ios_base::app);
      vm->outfile<<to_string(now)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->memoryReserved);

@@ -84,13 +84,13 @@ void startMonitoring()
     for(int i=0;i<vm.size();i++) {
 
         monitorThreads.push_back(std::thread([=] {
-            timer1  = 1;
-            maxMem =0;
+            //timer1  = 1;
+            //maxMem =0;
             while(1) {
-                std::cout<<vm[i]->name<<std::endl;
+               // std::cout<<vm[i]->name<<std::endl;
                 setVMCurrentMemoryUsage(vm[i]);
                 std::this_thread::sleep_for (std::chrono::seconds(1));
-                std::cout<<vm[i]->currentMemory<<" ";
+               // std::cout<<vm[i]->currentMemory<<" ";
                 maxMem = std::max(vm[i]-> currentMemory,maxMem);
                 timer1++;
                 if(timer1==30)
@@ -99,7 +99,7 @@ void startMonitoring()
                     vm[i]->maxPeak = std::max(maxMem,((vm[i]->original_limit)/10));
                     time_t t = std::time(0);
                     long int now = static_cast<long int> (t);
-                    cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
+                    //cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
                     //std::cout<<"30-------------"<<vm[i]->maxPeak<<std::endl;
                     maxMem=0;
                 }
@@ -184,23 +184,24 @@ void setVMCurrentMemoryUsage(struct dataValues*& machine)
     machine->currentMemory -= stod(s.str(1));
     if(machine->currentMemory >= 0.9*(machine->memoryReserved))
     {
-        cout<<"we have to kill the container!!!!!!!!!";
+        cout<<machine->name<<" "<<"needs memory\n";
+        //runCommand("sh /home/ahmad/scripts/stop_nm.sh");
+        system("/home/ahmad/scripts/stop_nm.sh");
         //AHMAD'S SCRIPT RUNS HERE
 
         for(int i=0;i<vm.size();i++)
         {
             vm[i]->maxPeak = 0;
         }
-        
-        timer1 = timer2 = 0;
+        timer1=0;
+        timer2 = 5;
         maxMem =0;
-
-      
+        //update memoryReserved and total_claimed.
     }
-    vm->outfile.open(vm->name,std::ios_base::app);
-    vm->outfile<<to_string(now)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->memoryReserved);
-    vm->outfile<<"\n";
-    vm->outfile.close();
+    machine->outfile.open(machine->name,std::ios_base::app);
+    machine->outfile<<to_string(now)<<","<<to_string(machine->currentMemory)<<","<<to_string(machine->memoryReserved);
+    machine->outfile<<"\n";
+    machine->outfile.close();
 }
 
 void claim_memory_vm(vector<dataValues *> claim_list)
@@ -210,8 +211,8 @@ void claim_memory_vm(vector<dataValues *> claim_list)
         int claim_val = claim_list[i]->memoryReserved  - (claim_list[i]->maxPeak + 0.25*claim_list[i]->maxPeak);
         claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
         claim_list[i]->total_claimed+=claim_val;
-
-        cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
+        cout<<claim_val<<" "<<claim_list[i]->name<<"\n";
+        //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
 
         time_t t = std::time(0);
         long int now = static_cast<long int> (t);
