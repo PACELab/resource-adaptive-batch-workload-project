@@ -189,20 +189,24 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
 
 void claim_memory_vm(vector<dataValues *> claim_list)
 {
+    double total_claimed = 0;
     for(int i=0;i<claim_list.size();i++)
     {
          int claim_val = claim_list[i]->memoryReserved  - (claim_list[i]->maxPeak + 0.25*claim_list[i]->maxPeak);
          claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
          claim_list[i]->total_claimed+=claim_val;
+         
+          total_claimed+=claim_val;
  
-         cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
+         //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
  
          time_t t = std::time(0);
      	 long int now = static_cast<long int> (t);
 
-          //ADD AHMAD SCRIPT HERE
          //runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
     }
+        cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
+        //RUN claim script here passing total_claimed as argument;
 }
 
 void startProcessing()
