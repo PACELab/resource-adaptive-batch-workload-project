@@ -173,6 +173,11 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
      long int now = static_cast<long int> (t);
     // cout<<"Total claimed from "<<vm->name<<" "<<vm->total_claimed<<"\n";
      vm->currentMemory -= stod(s.str(1));
+     if(vm->currentMemory >= 0.9*(vm->memoryReserved))
+     {
+		cout<<"we have to kill the container!!!!!!!!!";
+                //AHMAD'S SCRIPT RUNS HERE
+     }
      vm->outfile.open(vm->name,std::ios_base::app);
      vm->outfile<<to_string(now)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->memoryReserved);
      vm->outfile<<"\n";
