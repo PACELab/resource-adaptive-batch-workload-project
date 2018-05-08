@@ -42,6 +42,7 @@ struct containerValues
 {
     std::string containerID;
     double currMemory;
+    ofstream con_output;
 };
 
 void setVMCurrentMemoryUsage(struct dataValues* & vm);
@@ -182,7 +183,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
                 
      }
      vm->outfile.open(vm->name,std::ios_base::app);
-     vm->outfile<<to_string(now)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->memoryReserved);
+     vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved);
      vm->outfile<<"\n";
      vm->outfile.close();
 }
@@ -305,7 +306,16 @@ void collectContainerStats()
         std::getline(ss1,to,' ');
         cv->containerID = to;
         std::getline(ss1,to,' ');
+
+        time_t t = std::time(0);
+        long int now = static_cast<long int> (t);
+
         cv->currMemory = getdValue(to);
+        cv->con_output.open(cv->containerID,std::ios_base::app);
+        cv->con_output<<to_string(now)<<","<<to_string(cv->currMemory);
+        cv->con_output<<"\n";
+        cv->con_output.close();
+        
         if(cv->currMemory!=0)
             container.push_back(cv);
         else
