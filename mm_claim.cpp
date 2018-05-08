@@ -34,7 +34,7 @@ struct dataValues
     double memoryReserved;
     double stats[100] = {0};
     ofstream outfile;
-    long total_claimed;
+    double total_claimed;
     double original_limit;
 };
 
@@ -178,9 +178,9 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
      {
 		cout<<"we have to kill the container!!!!!!!!!";
                 //AHMAD'S SCRIPT RUNS HERE
-                system("/home/ahmad/scripts/stop_nm.sh");
+                runCommand(("sh killStress.sh "+container[0]->containerID).c_str());
 		//update the vm->memoryReserved and vm->total_claimed here.
-                
+                vm->memoryReserved = vm->original_limit;
      }
      vm->outfile.open(vm->name,std::ios_base::app);
      vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved);
@@ -190,14 +190,14 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
 
 void claim_memory_vm(vector<dataValues *> claim_list)
 {
-    double total_claimed = 0;
+    int total_claimed = 0;
     for(int i=0;i<claim_list.size();i++)
     {
          int claim_val = claim_list[i]->memoryReserved  - (claim_list[i]->maxPeak + 0.25*claim_list[i]->maxPeak);
          claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
          claim_list[i]->total_claimed+=claim_val;
          
-          total_claimed+=claim_val;
+         total_claimed+=claim_val;
  
          //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
  
@@ -206,8 +206,12 @@ void claim_memory_vm(vector<dataValues *> claim_list)
 
          //runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
     }
-        cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
-        //RUN claim script here passing total_claimed as argument;
+        //cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
+        int threads = total_claimed/262144;
+        //cout<<threads<<"\n";
+        runCommand(("sh killStress.sh "+container[0]->containerID).c_str());
+        runCommand(("sh runStress.sh "+container[0]->containerID+" "+to_string(threads)).c_str());
+        //runCommand(("sh runStress.sh 898246e93082 2048m"))
 }
 
 void startProcessing()
@@ -448,6 +452,9 @@ void monitorMemPressure(char* memoryPressureNotificationFile)
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
             printf("\n\n\nLOW PRESSURE LEVEL REACHED\n\n\n");
+            /*runCommand(("sh killStress.sh 898246e93082"));
+                //update the vm->memoryReserved and vm->total_claimed here.
+            vm->memoryReserved = vm->original_limit;*/
         }
 
     }));
@@ -480,7 +487,7 @@ int main(int argc,char* argv[]) {
 
     for (auto &t : monitorThreads) {
         t.join();
-    }
-
+    } 
+    //system("sh runStress.sh 898246e93082 2048m"); 
     return 0;
 }
