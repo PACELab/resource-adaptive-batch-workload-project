@@ -183,7 +183,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
                 vm->memoryReserved = vm->original_limit;
      }
      vm->outfile.open(vm->name,std::ios_base::app);
-     vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved);
+     vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved)<<","<<to_string(vm->currentMemory);
      vm->outfile<<"\n";
      vm->outfile.close();
 }
@@ -479,10 +479,10 @@ int main(int argc,char* argv[]) {
 
     MemoryMonitor();
     startMonitoring();
-    std::this_thread::sleep_for (std::chrono::seconds(5));
-    startProcessing();
     MonitorContainerMemory();
     std::this_thread::sleep_for (std::chrono::seconds(5));
+    startProcessing();
+    //std::this_thread::sleep_for (std::chrono::seconds(5));
     //readContainerStats();
 
     for (auto &t : monitorThreads) {
