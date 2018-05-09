@@ -208,9 +208,12 @@ void claim_memory_vm(vector<dataValues *> claim_list)
     }
         //cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
         int threads = total_claimed/262144;
-        //cout<<threads<<"\n";
-        runCommand(("sh killStress.sh "+container[0]->containerID).c_str());
-        runCommand(("sh runStress.sh "+container[0]->containerID+" "+to_string(threads)).c_str());
+        cout<<"runnable threads: "<<threads<<"\n";
+        if(threads > 0)
+        {
+        	runCommand(("sh killStress.sh "+container[0]->containerID).c_str());
+        	runCommand(("sh runStress.sh "+container[0]->containerID+" "+to_string(threads)).c_str());
+        }
         //runCommand(("sh runStress.sh 898246e93082 2048m"))
 }
 
@@ -310,11 +313,14 @@ void collectContainerStats()
         std::getline(ss1,to,' ');
         cv->containerID = to;
         std::getline(ss1,to,' ');
-
+        
         time_t t = std::time(0);
         long int now = static_cast<long int> (t);
-
+        
         cv->currMemory = getdValue(to);
+        std::getline(ss1,to,' ');
+        if(to=="GiB")
+             cv->currMemory*=1024;
         cv->con_output.open(cv->containerID,std::ios_base::app);
         cv->con_output<<to_string(now)<<","<<to_string(cv->currMemory);
         cv->con_output<<"\n";
@@ -327,8 +333,8 @@ void collectContainerStats()
 
     }
 
-    for(int i=0;i<container.size();i++)
-        std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
+    //for(int i=0;i<container.size();i++)
+      //  std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
 
 }
 
