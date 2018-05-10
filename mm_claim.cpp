@@ -29,13 +29,13 @@ using namespace std;
 struct dataValues
 {
     std::string name;
-    double currentMemory;
-    double maxPeak;
-    double memoryReserved;
+    int currentMemory;
+    int  maxPeak;
+    int  memoryReserved;
     double stats[100] = {0};
     ofstream outfile;
-    double total_claimed;
-    double original_limit;
+    int  total_claimed;
+    int  original_limit;
 };
 
 struct containerValues
@@ -77,12 +77,12 @@ void startMonitoring()
 
         monitorThreads.push_back(std::thread([=] {
             int timer  = 1;
-            double maxMem =0;
+            int  maxMem =0;
             while(1) {
                 std::cout<<vm[i]->name<<std::endl;
                 setVMCurrentMemoryUsage(vm[i]);
                 std::this_thread::sleep_for (std::chrono::seconds(1));
-                std::cout<<vm[i]->currentMemory<<" ";
+                //std::cout<<vm[i]->currentMemory<<" ";
                 maxMem = std::max(vm[i]-> currentMemory,maxMem);
                 timer++;
                 if(timer==30)
@@ -91,7 +91,7 @@ void startMonitoring()
                     vm[i]->maxPeak = std::max(maxMem,((vm[i]->original_limit)/10));
                     time_t t = std::time(0);
      		    long int now = static_cast<long int> (t);
-	            cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
+	            //cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
                     //std::cout<<"30-------------"<<vm[i]->maxPeak<<std::endl;
                     maxMem=0;
                 }
@@ -178,7 +178,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
      {
 		cout<<"we have to kill the container!!!!!!!!!";
                 //AHMAD'S SCRIPT RUNS HERE
-                runCommand(("sh killStress.sh 3290c8c6eee6 ");
+                runCommand("sh killStress.sh 3290c8c6eee6 ");
 		//update the vm->memoryReserved and vm->total_claimed here.
                 vm->memoryReserved = vm->original_limit;
      }
@@ -191,6 +191,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
 void claim_memory_vm(vector<dataValues *> claim_list)
 {
     int total_claimed = 0;
+    cout<<"original_memory " << vm[0]->original_limit<<"\n";
     for(int i=0;i<claim_list.size();i++)
     {
          int claim_val = claim_list[i]->memoryReserved  - (claim_list[i]->maxPeak + 0.25*claim_list[i]->maxPeak);
@@ -198,15 +199,14 @@ void claim_memory_vm(vector<dataValues *> claim_list)
          claim_list[i]->total_claimed+=claim_val;
          
          total_claimed+=claim_val;
- 
-         //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
+         cout<<" current reserved "<<claim_list[i]->memoryReserved<<"\n";
+          //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
  
          time_t t = std::time(0);
      	 long int now = static_cast<long int> (t);
 
-         //runCommand(("virsh --connect qemu:///system qemu-monitor-command --domain "+ claim_list[i]->name + " --hmp 'balloon "+ to_string(claim_list[i]->memoryReserved/1024) + "'").c_str());
     }
-        //cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
+        cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
         int threads = total_claimed/262144;
         cout<<"runnable threads: "<<threads<<"\n";
         if(threads > 0)
@@ -226,8 +226,9 @@ void startProcessing()
             if (timer == 30)
             {
                 for(int i=0;i<vm.size();i++)
-                {
+                {       //cout<<"Reserved val "<<vm[i]->memoryReserved<<"\n";
                         int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
+                        cout<<"to be claimed "<<claim_val<<"\n";
                         if(claim_val > 2091752)
                              claim_list.push_back(vm[i]);
                         //std::cout <<"30 Sec Read: "<<vm[i].second->maxPeak << std::endl;
