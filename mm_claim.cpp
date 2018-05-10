@@ -178,7 +178,7 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
      {
 		cout<<"we have to kill the container!!!!!!!!!";
                 //AHMAD'S SCRIPT RUNS HERE
-                runCommand(("sh killStress.sh "+container[0]->containerID).c_str());
+                runCommand(("sh killStress.sh 3290c8c6eee6 ");
 		//update the vm->memoryReserved and vm->total_claimed here.
                 vm->memoryReserved = vm->original_limit;
      }
@@ -210,9 +210,8 @@ void claim_memory_vm(vector<dataValues *> claim_list)
         int threads = total_claimed/262144;
         cout<<"runnable threads: "<<threads<<"\n";
         if(threads > 0)
-        {
-        	runCommand(("sh killStress.sh "+container[0]->containerID).c_str());
-        	runCommand(("sh runStress.sh "+container[0]->containerID+" "+to_string(threads)).c_str());
+	{
+         	runCommand(("sh runStress.sh 3290c8c6eee6  "+to_string(threads)).c_str());
         }
         //runCommand(("sh runStress.sh 898246e93082 2048m"))
 }
@@ -297,7 +296,7 @@ std::mutex m1;
 
 void collectContainerStats()
 {
-    std::lock_guard<std::mutex> locker(m1);
+    /*std::lock_guard<std::mutex> locker(m1);
     container.clear();
 
     std::string data = runCommand("docker stats --format \"{{.Container}} {{.MemUsage}}\" --no-stream");
@@ -331,8 +330,9 @@ void collectContainerStats()
         else
             free(cv);
 
-    }
-
+    }*/
+    runCommand("cat /sys/fs/cgroup/memory/docker/3290c8c6eee62d204b5bd246681f0406419a55665aabe4746793a236698c4a1c/memory.usage_in_bytes >> cbc0788f0dc4.txt");
+     
     //for(int i=0;i<container.size();i++)
       //  std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
 
