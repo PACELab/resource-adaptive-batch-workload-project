@@ -187,16 +187,15 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
     if(vm->currentMemory >= 0.9*(vm->memoryReserved))
     {
         //AHMAD'S SCRIPT RUNS HERE
-        runCommand("sh killStress.sh 9ba76a756b8a ");
+        runCommand("sh killStress.sh 3290c8c6eee6 ");
         vm->total_claimed=0;
         setToZero=2;
         //update the vm->memoryReserved and vm->total_claimed here.
         vm->memoryReserved = vm->original_limit;
     }
-
-    string containerVal = runCommand("cat /sys/fs/cgroup/memory/docker/9ba76a756b8a4c6df6266a2f9f994510838cb486e3a48030cd7ee02b2bbd8c6a/memory.usage_in_bytes");
     vm->outfile.open(vm->name,std::ios_base::app);
-    vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->total_claimed)<<","<<containerVal<<endl;
+    vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->total_claimed);
+    vm->outfile<<"\n";
     vm->outfile.close();
 }
 
@@ -219,12 +218,12 @@ void claim_memory_vm(vector<dataValues *> claim_list)
 
     }
     cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
-    int threads = total_claimed/32;
+    int threads = total_claimed/8;
     cout<<"runnable memory/16: "<<threads<<"\n";
     if(threads > 0)
     {
-        runCommand(("sh runStress.sh 9ba76a756b8a  "+to_string(threads)).c_str());
-        cout<<"sh runStress.sh 9ba76a756b8a  "+to_string(threads)<<endl;
+        runCommand(("sh runStress.sh 3290c8c6eee6  "+to_string(threads)).c_str());
+        cout<<"sh runStress.sh 3290c8c6eee6  "+to_string(threads)<<endl;
     }
     //runCommand(("sh runStress.sh 898246e93082 2048m"))
 }
@@ -243,7 +242,7 @@ void startProcessing()
                     int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
                     cout<<"to be claimed "<<claim_val<<"\n";
                     if(claim_val > 1436549)
-                        //if(claim_val > 262144)
+		    //if(claim_val > 262144)
                         claim_list.push_back(vm[i]);
                     //std::cout <<"30 Sec Read: "<<vm[i].second->maxPeak << std::endl;
                 }

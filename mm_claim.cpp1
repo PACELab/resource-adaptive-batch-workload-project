@@ -71,9 +71,6 @@ std::string runCommand(const char *s)
     return data;
 }
 
-mutex m4;
-int setToZero;
-
 void startMonitoring()
 {
     for(int i=0;i<vm.size();i++) {
@@ -82,28 +79,21 @@ void startMonitoring()
             int timer  = 1;
             int  maxMem =0;
             while(1) {
-                //std::cout<<vm[i]->name<<std::endl;
+                std::cout<<vm[i]->name<<std::endl;
                 setVMCurrentMemoryUsage(vm[i]);
                 std::this_thread::sleep_for (std::chrono::seconds(1));
                 //std::cout<<vm[i]->currentMemory<<" ";
                 maxMem = std::max(vm[i]-> currentMemory,maxMem);
                 timer++;
-                if(timer==10)
+                if(timer==30)
                 {
                     timer=0;
                     vm[i]->maxPeak = std::max(maxMem,((vm[i]->original_limit)/10));
                     time_t t = std::time(0);
-                    long int now = static_cast<long int> (t);
-                    //cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
+     		    long int now = static_cast<long int> (t);
+	            //cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
                     //std::cout<<"30-------------"<<vm[i]->maxPeak<<std::endl;
                     maxMem=0;
-                } else if(setToZero>0)
-                {
-                    unique_lock<mutex> m(m4);
-                    timer=0;
-                    cout<<timer<<" ZERO ZERO ZZERO "<<endl;
-                    setToZero--;
-
                 }
             }
         }));
@@ -164,40 +154,39 @@ void  MemoryMonitor() {
 
 void setVMCurrentMemoryUsage(struct dataValues*& vm)
 {
-    std::string data = runCommand(("/usr/bin/virsh dommemstat " + vm->name).c_str());
+     std::string data = runCommand(("/usr/bin/virsh dommemstat " + vm->name).c_str());
 
-    std::regex r2("unused (.*)");
-    std::regex r1("available (.*)");
-    std::smatch s;
+     std::regex r2("unused (.*)");
+     std::regex r1("available (.*)");
+     std::smatch s;
 
-    regex_search(data,s,r1);
-    if(vm->original_limit==0)
-    {
-        vm->original_limit = stod(s.str(1));
-        vm->memoryReserved = vm->original_limit;
-    }
-    vm->currentMemory = stod(s.str(1));
+     regex_search(data,s,r1);
+     if(vm->original_limit==0)
+     {
+           vm->original_limit = stod(s.str(1));
+           vm->memoryReserved = vm->original_limit;
+     }
+     vm->currentMemory = stod(s.str(1));
 
-    regex_search(data,s,r2);
+     regex_search(data,s,r2);
 
-    time_t t = std::time(0);
-    long int now = static_cast<long int> (t);
+     time_t t = std::time(0);
+     long int now = static_cast<long int> (t);
     // cout<<"Total claimed from "<<vm->name<<" "<<vm->total_claimed<<"\n";
-    vm->currentMemory -= stod(s.str(1));
-    if(vm->currentMemory >= 0.9*(vm->memoryReserved))
-    {
-        //AHMAD'S SCRIPT RUNS HERE
-        runCommand("sh killStress.sh 9ba76a756b8a ");
-        vm->total_claimed=0;
-        setToZero=2;
-        //update the vm->memoryReserved and vm->total_claimed here.
-        vm->memoryReserved = vm->original_limit;
-    }
-
-    string containerVal = runCommand("cat /sys/fs/cgroup/memory/docker/9ba76a756b8a4c6df6266a2f9f994510838cb486e3a48030cd7ee02b2bbd8c6a/memory.usage_in_bytes");
-    vm->outfile.open(vm->name,std::ios_base::app);
-    vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->total_claimed)<<","<<containerVal<<endl;
-    vm->outfile.close();
+     vm->currentMemory -= stod(s.str(1));
+     if(vm->currentMemory >= 0.9*(vm->memoryReserved))
+     {
+		cout<<"we have to kill the container!!!!!!!!!";
+                //AHMAD'S SCRIPT RUNS HERE
+                runCommand("sh killStress.sh 3290c8c6eee6 ");
+                vm->total_claimed=0;
+		//update the vm->memoryReserved and vm->total_claimed here.
+                vm->memoryReserved = vm->original_limit;
+     }
+     vm->outfile.open(vm->name,std::ios_base::app);
+     vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved)<<","<<to_string(vm->currentMemory);
+     vm->outfile<<"\n";
+     vm->outfile.close();
 }
 
 void claim_memory_vm(vector<dataValues *> claim_list)
@@ -206,27 +195,26 @@ void claim_memory_vm(vector<dataValues *> claim_list)
     cout<<"original_memory " << vm[0]->original_limit<<"\n";
     for(int i=0;i<claim_list.size();i++)
     {
-        int claim_val = claim_list[i]->memoryReserved  - (claim_list[i]->maxPeak + 0.25*claim_list[i]->maxPeak);
-        claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
-        claim_list[i]->total_claimed+=claim_val;
-
-        total_claimed+=claim_val;
-        cout<<" current reserved "<<claim_list[i]->memoryReserved<<"\n";
-        //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
-
-        time_t t = std::time(0);
-        long int now = static_cast<long int> (t);
+         int claim_val = claim_list[i]->memoryReserved  - (claim_list[i]->maxPeak + 0.25*claim_list[i]->maxPeak);
+         claim_list[i]->memoryReserved = claim_list[i]->memoryReserved - claim_val;
+         claim_list[i]->total_claimed+=claim_val;
+         
+         total_claimed+=claim_val;
+         cout<<" current reserved "<<claim_list[i]->memoryReserved<<"\n";
+          //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
+ 
+         time_t t = std::time(0);
+     	 long int now = static_cast<long int> (t);
 
     }
-    cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
-    int threads = total_claimed/32;
-    cout<<"runnable memory/16: "<<threads<<"\n";
-    if(threads > 0)
-    {
-        runCommand(("sh runStress.sh 9ba76a756b8a  "+to_string(threads)).c_str());
-        cout<<"sh runStress.sh 9ba76a756b8a  "+to_string(threads)<<endl;
-    }
-    //runCommand(("sh runStress.sh 898246e93082 2048m"))
+        cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
+        int threads = total_claimed/262144;
+        cout<<"runnable threads: "<<threads<<"\n";
+        if(threads > 0)
+	{
+         	runCommand(("sh runStress.sh 3290c8c6eee6  "+to_string(threads)).c_str());
+        }
+        //runCommand(("sh runStress.sh 898246e93082 2048m"))
 }
 
 void startProcessing()
@@ -236,28 +224,19 @@ void startProcessing()
         vector <dataValues *> claim_list;
         while(1)
         {
-            if (timer == 10)
+            if (timer == 30)
             {
                 for(int i=0;i<vm.size();i++)
                 {       //cout<<"Reserved val "<<vm[i]->memoryReserved<<"\n";
-                    int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
-                    cout<<"to be claimed "<<claim_val<<"\n";
-                    if(claim_val > 1436549)
-                        //if(claim_val > 262144)
-                        claim_list.push_back(vm[i]);
-                    //std::cout <<"30 Sec Read: "<<vm[i].second->maxPeak << std::endl;
+                        int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
+                        cout<<"to be claimed "<<claim_val<<"\n";
+                        if(claim_val > 2091752)
+                             claim_list.push_back(vm[i]);
+                        //std::cout <<"30 Sec Read: "<<vm[i].second->maxPeak << std::endl;
                 }
                 claim_memory_vm(claim_list);
                 claim_list.resize(0);
                 timer=0;
-            }
-            else if(setToZero>0)
-            {
-                unique_lock<mutex> m(m4);
-                timer=0;
-                cout<<timer<<" ZERO ZERO ZZERO "<<endl;
-                setToZero--;
-
             }
             std::this_thread::sleep_for (std::chrono::seconds(1));
             timer+=1;
@@ -293,7 +272,7 @@ void setHostCurrentMemoryUsage()
     }
 
     //std::cout<<hostStats[2]<<" ";
-    // std::cout<<hostStats[3]<<" ";
+   // std::cout<<hostStats[3]<<" ";
     //std::cout<<hostStats[4]<<" ";
     //std::cout<<hostStats[5]<<" ";
 }
@@ -354,11 +333,11 @@ void collectContainerStats()
             free(cv);
 
     }*/
-
+   
     runCommand(("echo \""+to_string(vm[0]->total_claimed)+"\" >> cbc0788f0dc4.txt").c_str());
-
+     
     //for(int i=0;i<container.size();i++)
-    //  std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
+      //  std::cout<<container[i]->currMemory<<" "<<container[i]->containerID<<std::endl;
 
 }
 
@@ -377,42 +356,42 @@ void monitorMemoryStatsByVM(char* memStatsfile,struct dataValues* dv)
 
     monitorThreads.push_back(std::thread([=] {
 
-        while(1) {
-            //std::cout << memStatsfile << std::endl;
+    while(1) {
+        //std::cout << memStatsfile << std::endl;
 
-            std::ifstream in(memStatsfile);
-
-
-            int i = 0;
+        std::ifstream in(memStatsfile);
 
 
-            if (!in) {
-                std::cout << "Cannot open input file.\n";
-                return;
-            }
-
-            std::string str;
-
-            while (std::getline(in, str)) {
+        int i = 0;
 
 
-                std::stringstream ss(str);
-                std::getline(ss, str, ' ');
-                std::getline(ss, str, ' ');
-
-                try {
-                    dv->stats[i++] = stod(str);
-                }
-                catch (...) {
-
-                }
-
-            }
-
-            in.close();
-
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+        if (!in) {
+            std::cout << "Cannot open input file.\n";
+            return;
         }
+
+        std::string str;
+
+        while (std::getline(in, str)) {
+
+
+            std::stringstream ss(str);
+            std::getline(ss, str, ' ');
+            std::getline(ss, str, ' ');
+
+            try {
+                dv->stats[i++] = stod(str);
+            }
+            catch (...) {
+
+            }
+
+        }
+        
+        in.close();
+
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
 
     }));
 
@@ -423,7 +402,7 @@ void monitorMemPressure(char* memoryPressureNotificationFile)
 
     monitorThreads.push_back(std::thread([=] {
 
-        //std::cout<<memoryPressureNotificationFile<<std::endl;
+        std::cout<<memoryPressureNotificationFile<<std::endl;
         int efd = -1;
         int cfd = -1;
         int event_control = -1;
@@ -496,18 +475,20 @@ void MonitorContainerMemory()
 {
     monitorThreads.push_back(std::thread([=] {
 
-        while (1) {
-            collectContainerStats();
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
+            while (1) {
+                collectContainerStats();
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
 
-    }));
+        }));
 }
+
+
 int main(int argc,char* argv[]) {
 
     MemoryMonitor();
     startMonitoring();
-    //MonitorContainerMemory();
+    MonitorContainerMemory();
     std::this_thread::sleep_for (std::chrono::seconds(5));
     startProcessing();
     //std::this_thread::sleep_for (std::chrono::seconds(5));
@@ -515,7 +496,7 @@ int main(int argc,char* argv[]) {
 
     for (auto &t : monitorThreads) {
         t.join();
-    }
+    } 
     //system("sh runStress.sh 898246e93082 2048m"); 
     return 0;
 }
