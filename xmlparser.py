@@ -1,12 +1,5 @@
-import xml.etree.ElementTree as ET
-import sys
+f = open(sys.argv[1])
+i=0;
 
-tree = ET.parse(sys.argv[1])
-
-
-for child in tree.getroot():
-    prop = child.find('name')
-    if(prop.text == 'yarn.scheduler.maximum-allocation-mb'):
-        prop.value = int(sys.argv[2])
-
-tree.write(sys.argv[3])
+for line in f.readLines():
+    print(i,line)
