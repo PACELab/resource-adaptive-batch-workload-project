@@ -24,7 +24,8 @@ using namespace std;
 
 #include <sys/eventfd.h>
 
-
+#define MEMORY_TO_GIVE 1
+#define ON_COOLDOWN 0
 
 struct dataValues
 {
@@ -34,8 +35,11 @@ struct dataValues
     int  memoryReserved;
     double stats[100] = {0};
     ofstream outfile;
+    ofstream logfile;
     int  total_claimed;
     int  original_limit;
+    int state;//state which tells if we can give more memory or not.
+    int cycles_left; // cycles left before next check
 };
 
 struct containerValues
@@ -82,20 +86,16 @@ void startMonitoring()
             int timer  = 1;
             int  maxMem =0;
             while(1) {
-                //std::cout<<vm[i]->name<<std::endl;
                 setVMCurrentMemoryUsage(vm[i]);
-                std::this_thread::sleep_for (std::chrono::seconds(1));
-                //std::cout<<vm[i]->currentMemory<<" ";
+                std::this_thread::sleep_for (std::chrono::milliseconds(100));
                 maxMem = std::max(vm[i]-> currentMemory,maxMem);
                 timer++;
-                if(timer==10)
+                if(timer==100)
                 {
                     timer=0;
                     vm[i]->maxPeak = std::max(maxMem,((vm[i]->original_limit)/10));
                     time_t t = std::time(0);
                     long int now = static_cast<long int> (t);
-                    //cout<<to_string(now)<<" "<<"Maxmem: "<<maxMem<<"kb for "<<" "<<vm[i]->name<<"\n";
-                    //std::cout<<"30-------------"<<vm[i]->maxPeak<<std::endl;
                     maxMem=0;
                 } else if(setToZero>0)
                 {
@@ -104,7 +104,7 @@ void startMonitoring()
                     cout<<timer<<" ZERO ZERO ZZERO "<<endl;
                     setToZero--;
 
-                }
+          	}
             }
         }));
     }
@@ -142,11 +142,13 @@ void  MemoryMonitor() {
                     dv->currentMemory=dv->maxPeak=0;
                     dv->original_limit = 0;
                     dv->name=to;
+		    dv->state = MEMORY_TO_GIVE;
+		    dv->cycles_left  = 0;
 
-                    std::string process = "/sys/fs/cgroup/memory/machine/"+to+".libvirt-qemu/memory.pressure_level";
-                    char *cstr = new char[process.length() + 1];
-                    strcpy(cstr, process.c_str());
-                    monitorMemPressure(cstr);
+                      std::string process = "/sys/fs/cgroup/memory/machine/"+to+".libvirt-qemu/memory.pressure_level";
+    //                char *cstr = new char[process.length() + 1];
+      //              strcpy(cstr, process.c_str());
+//                    monitorMemPressure(cstr);
 
                     process = "/sys/fs/cgroup/memory/machine/"+to+".libvirt-qemu/memory.stat";
                     char *cstr1 = new char[process.length() + 1];
@@ -196,7 +198,8 @@ void setVMCurrentMemoryUsage(struct dataValues*& vm)
 
     string containerVal = runCommand("cat /sys/fs/cgroup/memory/docker/9ba76a756b8a4c6df6266a2f9f994510838cb486e3a48030cd7ee02b2bbd8c6a/memory.usage_in_bytes");
     vm->outfile.open(vm->name,std::ios_base::app);
-    vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->total_claimed)<<","<<containerVal<<endl;
+    vm->outfile<<to_string(now)<<","<<to_string(vm->memoryReserved)<<","<<to_string(vm->currentMemory)<<","<<to_string(vm->total_claimed)<<","<<containerVal;
+//    vm->outfile<<"\n";
     vm->outfile.close();
 }
 
@@ -212,15 +215,16 @@ void claim_memory_vm(vector<dataValues *> claim_list)
 
         total_claimed+=claim_val;
         cout<<" current reserved "<<claim_list[i]->memoryReserved<<"\n";
-        //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n";
-
-        time_t t = std::time(0);
-        long int now = static_cast<long int> (t);
-
+        //cout<<"Total claimed from " <<claim_list[i]->name<<" "<<claim_list[i]->total_claimed<<"\n"
     }
-    cout<<"total claimable by yarn Node Manager : " <<total_claimed<<"\n";
+    vm[0]->logfile.open(vm[0]->name,std::ios_base::app);
+    time_t t = std::time(0);
+    long int now = static_cast<long int> (t);
+    vm[0]->logfile<<to_string(now)<<"total claimable by yarn Node Manager : "<<total_claimed<<"\n"; 
+    vm[0]->logfile.close();
+
     int threads = total_claimed/32;
-    cout<<"runnable memory/16: "<<threads<<"\n";
+    //cout<<"runnable memory/16: "<<threads<<"\n";
     if(threads > 0)
     {
         runCommand(("sh runStress.sh 9ba76a756b8a  "+to_string(threads)).c_str());
@@ -239,25 +243,27 @@ void startProcessing()
             if (timer == 10)
             {
                 for(int i=0;i<vm.size();i++)
-                {       //cout<<"Reserved val "<<vm[i]->memoryReserved<<"\n";
-                    int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
-                    cout<<"to be claimed "<<claim_val<<"\n";
-                    if(claim_val > 1436549)
-                        //if(claim_val > 262144)
-                        claim_list.push_back(vm[i]);
-                    //std::cout <<"30 Sec Read: "<<vm[i].second->maxPeak << std::endl;
+                {
+		    if (vm[i]->state == MEMORY_TO_GIVE ) {  
+                    	int claim_val = vm[i]->memoryReserved  - (vm[i]->maxPeak + 0.25*vm[i]->maxPeak);
+                    	cout<<"to be claimed "<<claim_val<<"\n";
+                    	if(claim_val > 1436549){
+				vm[i]->state = ON_COOLDOWN;
+				vm[i]->cycles_left = 2;
+                        	claim_list.push_back(vm[i]);
+			}
+		    }
+		    else {
+				if(vm[i]->cycles_left == 0) {
+					vm[i]->state = MEMORY_TO_GIVE;
+				} else{
+					vm[i]->cycles_left--;
+				}
+		    }
                 }
                 claim_memory_vm(claim_list);
                 claim_list.resize(0);
                 timer=0;
-            }
-            else if(setToZero>0)
-            {
-                unique_lock<mutex> m(m4);
-                timer=0;
-                cout<<timer<<" ZERO ZERO ZZERO "<<endl;
-                setToZero--;
-
             }
             std::this_thread::sleep_for (std::chrono::seconds(1));
             timer+=1;
@@ -292,12 +298,7 @@ void setHostCurrentMemoryUsage()
         catch(...){}
     }
 
-    //std::cout<<hostStats[2]<<" ";
-    // std::cout<<hostStats[3]<<" ";
-    //std::cout<<hostStats[4]<<" ";
-    //std::cout<<hostStats[5]<<" ";
 }
-
 double getdValue(std::string s)
 {
     int j=0;
