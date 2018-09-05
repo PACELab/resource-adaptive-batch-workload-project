@@ -86,6 +86,8 @@ int main()
 		        // vm->total_claimed=0;
 		        // setToZero=2;
 		        // //update the vm->memoryReserved and vm->total_claimed here.
+		     // vm_not_in_use set it to 2 again
+		    	 vm_not_in_use[i] = 2;
 		         vm[i].memoryReserved = vm[i].original_limit;
 		    }
 
