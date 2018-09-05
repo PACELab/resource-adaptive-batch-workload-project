@@ -86,7 +86,7 @@ int main()
 		        // vm->total_claimed=0;
 		        // setToZero=2;
 		        // //update the vm->memoryReserved and vm->total_claimed here.
-		        // vm->memoryReserved = vm->original_limit;
+		         vm[i].memoryReserved = vm[i].original_limit;
 		    }
 
 		    vm[i].maxPeakHelper = max(vm[i].maxPeakHelper,vm[i].currentMemory);
