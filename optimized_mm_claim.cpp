@@ -2,6 +2,8 @@
 #include<string>
 #include<algorithm>
 #include<sstream>
+#include<map>
+#include<thread>
 
 using namespace std;
 
@@ -55,7 +57,7 @@ int main()
 	string data = runCommand("/usr/bin/virsh list | /bin/grep running | /usr/bin/awk '{print $2}'");
 	int vm_count = count(data.begin(),data.end(),'\n');
     struct vm_info* vm = new vm_info[vm_count];
-    map<int> vm_not_in_use;
+    map<int,int> vm_not_in_use;
     
     istringstream iss(data);
     for(int i=0;i<vm_count;i++)
@@ -80,15 +82,11 @@ int main()
     	
     	    if(vm[i].currentMemory >= 0.9*(vm[i].memoryReserved))
 		    {
-		        //AHMAD'S SCRIPT RUNS HERE
-		        //run command must be async here ??
-		        //runCommand("");
-		        // vm->total_claimed=0;
-		        // setToZero=2;
-		        // //update the vm->memoryReserved and vm->total_claimed here.
-		     // vm_not_in_use set it to 2 again
-		    	 vm_not_in_use[i] = 2;
-		         vm[i].memoryReserved = vm[i].original_limit;
+		        //talk to ahmad and fill his code here
+                cout<<"reached here......"<<endl;
+		    	vm_not_in_use[i] = maxPeakTimer>=5?3:2;
+		        vm[i].memoryReserved = vm[i].original_limit;
+		        cout<<vm[i].memoryReserved<<" "<<vm[i].name<<endl;
 		    }
 
 		    vm[i].maxPeakHelper = max(vm[i].maxPeakHelper,vm[i].currentMemory);
@@ -113,17 +111,18 @@ int main()
 	    		if(toBeClaimed > 1436549 and vm_not_in_use[i] == 0)
 	    		{
 	    			vm_not_in_use[i] = 2;
-	    			vm[i].memoryReserved -= (1.25*vm[i].maxPeak)
-	    			//claim toBeClaimed
+	    			vm[i].memoryReserved -= toBeClaimed;
+	    			//Claim what is to be claimed here
+
+	    			cout<<vm[i].memoryReserved<<" "<<vm[i].name<<endl;
+	    			cout<<"Claiming Memory from the VM to be given to the container"<<endl;
 	    		}
     		}
     	}
 
     	maxPeakTimer++;
     	maxPeakTimer%=10;
-
-        std::this_thread::sleep_for (std::chrono::seconds(1));
-    	break;    	
+        std::this_thread::sleep_for (std::chrono::seconds(1));    	
     }
 
 	return 0;
