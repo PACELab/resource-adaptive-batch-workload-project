@@ -9,6 +9,9 @@ using namespace std;
 
 typedef unsigned long int uint64_t;
 
+ofstream outfile;
+ofstream logfile;
+
 struct vm_info
 {
 	string name;
@@ -16,6 +19,7 @@ struct vm_info
     uint64_t  maxPeak;
     uint64_t  maxPeakHelper;
     uint64_t  memoryReserved;
+    ofstream outfile;
     uint64_t  total_claimed;
     uint64_t  original_limit;
 
@@ -79,7 +83,11 @@ int main()
     	{
     		vm[i].currentMemory = stoi(runCommand(("/usr/bin/virsh dommemstat "+vm[i].name+" | grep available | awk '{print $2}'").c_str()));
     		vm[i].currentMemory -= stoi(runCommand(("/usr/bin/virsh dommemstat "+vm[i].name+" | grep unused | awk '{print $2}'").c_str()));
-    	
+            
+            time_t t = std::time(0);
+	    long int now = static_cast<long int> (t);
+            vm[i].outfile.open(vm[i].name,std::ios_base::app);
+            vm[i].outfile<<to_string(now)<<","<<to_string(vm->memoryReserved)<<","<<to_string(vm[i].currentMemory)<<"\n";	
     	    if(vm[i].currentMemory >= 0.9*(vm[i].memoryReserved))
 		    {
 		        //talk to ahmad and fill his code here
@@ -113,10 +121,15 @@ int main()
 	    			vm_not_in_use[i] = 2;
 	    			vm[i].memoryReserved -= toBeClaimed;
 	    			//Claim what is to be claimed here
+				
 
 	    			cout<<vm[i].memoryReserved<<" "<<vm[i].name<<endl;
-	    			cout<<"Claiming Memory from the VM to be given to the container"<<endl;
-	    		}
+	    			//cout<<"Claiming Memory from the VM to be given to the container"<<endl;
+	    			time_t t = std::time(0);
+				long int now = static_cast<long int> (t);
+				logfile.open("pace_log",std::ios_base::app);
+				logfile<<to_string(now)<<"claiming   memory from vm : "<<toBeClaimed<<"\n";
+			}
     		}
     	}
 
