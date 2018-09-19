@@ -179,6 +179,7 @@ int main(int argc,char** argv)
     //subtract container mmemory from the total allocated memory
     vm->original_limit -= stod (argv[1]);   // argv[1] == <container_reserved_memory_in_gb>
     vm->memoryReserved = vm->original_limit;
+    //container memory reserved  = vm->original_limit - vm->memory_reserved;
 
     //gathering initial data for the defined running window
     for(int i=0;i<vm->window_size;i++)
@@ -212,6 +213,7 @@ int main(int argc,char** argv)
         {
             cout<<"reached here......"<<endl;
             vm->memoryReserved = currentMemory+(GUARD_STEP_SIZE*vm->stdeviation);
+            //container memory reserved  = vm->original_limit - vm->memory_reserved;
             
         }
             
@@ -247,6 +249,7 @@ int main(int argc,char** argv)
             vm->mean = p.first;
             vm->stdeviation = p.second;
             vm->memoryReserved = *std::max_element(vm->updata.begin(),vm->updata.end())+(GUARD_STEP_SIZE*vm->stdeviation);
+            //container memory reserved  = vm->original_limit - vm->memory_reserved;
             vm->downdata.clear();
             vm->updata.clear();
 
@@ -258,6 +261,7 @@ int main(int argc,char** argv)
             vm->mean = p.first;
             vm->stdeviation = p.second;
             vm->memoryReserved = *std::max_element(vm->downdata.begin(),vm->downdata.end())+(GUARD_STEP_SIZE*vm->stdeviation);
+            //container memory reserved  = vm->original_limit - vm->memory_reserved;
             vm->downdata.clear();
             vm->updata.clear();
 
