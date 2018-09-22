@@ -186,14 +186,14 @@ int main(int argc,char** argv)
 
     double reclaim_pct = stod(argv[5]);
 
-    double num_of_sockets=vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'");
+    //double num_of_sockets=vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'");
 
     //get the initial window size
     vm->window_size = stoi(argv[2]);
 
     double container_reclaim_size = stod(argv[6]);
 
-    cout<<"Num of Sockets :"<num_of_sockets;
+    //cout<<"Num of Sockets :"<num_of_sockets;
 
     int PHASE_CHANGE_SIZE = stoi(argv[3]);
     double GUARD_STEP_SIZE = stof(argv[4]);
