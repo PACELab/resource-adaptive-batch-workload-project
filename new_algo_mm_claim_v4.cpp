@@ -180,18 +180,26 @@ int main(int argc,char** argv)
 
     if(argc<=1)
     {
-        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> container_reclaim_size"<<endl;
+        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> <RECLAM_PCT>"<<endl;
         exit(0);
     }
 
+    double reclaim_pct = stod(argv[5]);
+
+    double num_of_sockets=vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'");
+
     //get the initial window size
     vm->window_size = stoi(argv[2]);
-    double container_reclaim_size = stod(argv[5]);
+
+    double container_reclaim_size = stod(argv[1])*num_of_sockets;
+
+    cout<<"Num of Sockets :"<num_of_sockets;
+
     int PHASE_CHANGE_SIZE = stoi(argv[3]);
-    int GUARD_STEP_SIZE = stoi(argv[4]);
+    double GUARD_STEP_SIZE = stof(argv[4]);
 
     //subtract container mmemory from the total allocated memory
-    vm->original_limit -= stod (argv[1]);   // argv[1] == <container_reserved_memory_in_gb>
+    vm->original_limit -= container_reclaim_size;   // argv[1] == <container_reserved_memory_in_gb>
     //container memory reserved  = vm->original_limit - vm->memory_reserved;
 
     //gathering initial data for the defined running window
@@ -207,11 +215,14 @@ int main(int argc,char** argv)
 
     }
 
-    double gaurdMem = 0.1*vm->original_limit;
+    double gaurdMem = reclaim_pct*vm->original_limit;
     double violations,phasechanges;
     violations=phasechanges=0;
     vm->mean = vm->sum/vm->window_size;
     vm->fgReserved = vm->mean + gaurdMem > GUARD_STEP_SIZE*vm->stdeviation ? gaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
+    con->bgReserved = (vm->original_limit - vm->fgReserved);
+    con->bgunused = fmod(con->bgReserved,container_reclaim_size);
+    con->bgReserved = con->bgReserved - con->bgunused;
 
 
     while(1)
