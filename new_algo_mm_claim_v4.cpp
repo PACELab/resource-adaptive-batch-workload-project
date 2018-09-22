@@ -180,11 +180,12 @@ int main(int argc,char** argv)
 
     if(argc<=1)
     {
-        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> <RECLAM_PCT> <CONTAINER RECLAIM SIZE> "<<endl;
+        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> <RECLAM_PCT> <CONTAINER RECLAIM SIZE> <FG_RESERVED_CLOSENESS_PCT>"<<endl;
         exit(0);
     }
 
     double reclaim_pct = stod(argv[5]);
+    double fg_reserved_pct = stod(argv[7]);
 
     //double num_of_sockets=vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'");
 
@@ -249,13 +250,13 @@ int main(int argc,char** argv)
         vm->sum2 += currentMemory*currentMemory;
         vm->window_size++;
 
-        if(currentMemory >= (vm->fgReserved)) 
+        if(currentMemory >= fg_reserved_pct*(vm->fgReserved)) 
         {
             currentMemory-=con->bgunused;
             con->bgunused=0;
         }
 
-        if(currentMemory >= (vm->fgReserved))
+        if(currentMemory >= fg_reserved_pct*(vm->fgReserved))
         {
             vm->fgReserved = currentMemory+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
