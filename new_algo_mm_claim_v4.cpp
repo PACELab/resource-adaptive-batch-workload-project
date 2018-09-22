@@ -249,13 +249,13 @@ int main(int argc,char** argv)
         vm->sum2 += currentMemory*currentMemory;
         vm->window_size++;
 
-        if(currentMemory >= (predictedPeakabove)) 
+        if(currentMemory >= (vm->fgReserved)) 
         {
             currentMemory-=con->bgunused;
             con->bgunused=0;
         }
 
-        if(currentMemory >= (predictedPeakabove))
+        if(currentMemory >= (vm->fgReserved))
         {
             vm->fgReserved = currentMemory+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
