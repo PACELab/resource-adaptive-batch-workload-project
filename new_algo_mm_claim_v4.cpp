@@ -180,7 +180,7 @@ int main(int argc,char** argv)
 
     if(argc<=1)
     {
-        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> <RECLAM_PCT>"<<endl;
+        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> <RECLAM_PCT> "<<endl;
         exit(0);
     }
 
@@ -191,7 +191,7 @@ int main(int argc,char** argv)
     //get the initial window size
     vm->window_size = stoi(argv[2]);
 
-    double container_reclaim_size = stod(argv[1])*num_of_sockets;
+    double container_reclaim_size = stod(argv[6]);
 
     cout<<"Num of Sockets :"<num_of_sockets;
 
@@ -199,7 +199,7 @@ int main(int argc,char** argv)
     double GUARD_STEP_SIZE = stof(argv[4]);
 
     //subtract container mmemory from the total allocated memory
-    vm->original_limit -= container_reclaim_size;   // argv[1] == <container_reserved_memory_in_gb>
+    vm->original_limit -= stod(argv[1]);   // argv[1] == <container_reserved_memory_in_gb>
     //container memory reserved  = vm->original_limit - vm->memory_reserved;
 
     //gathering initial data for the defined running window
