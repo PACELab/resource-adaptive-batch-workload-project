@@ -240,7 +240,7 @@ int main(int argc,char** argv)
 
         if(currentMemory >= (predictedPeakabove)) 
         {
-            currentMemory+=con->bgunused;
+            currentMemory-=con->bgunused;
             con->bgunused=0;
         }
 
