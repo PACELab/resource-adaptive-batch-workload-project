@@ -15,7 +15,7 @@ struct container
 {
     double bgReserved;
     double bgunused;
-    
+
     container()
     {
         bgReserved = 0;
@@ -28,7 +28,7 @@ struct container
 
 struct vm_info
 {
-    
+
     double currentMemory;
     double mean;
     double stdeviation;
@@ -108,7 +108,7 @@ string runCommand(const char *s)
 //     for(int i=0;i<PHASE_CHANGE_SIZE;i++) vm->window[i]=vm->window[10 - PHASE_CHANGE_SIZE +i];
 //     for(int i=PHASE_CHANGE_SIZE;i<10;i++) vm->window[i]=0;
 //     vm->activeWindowSize=PHASE_CHANGE_SIZE;
-    
+
 // }
 
 //code ref: https://www.strchr.com/standard_deviation_in_one_pass
@@ -180,12 +180,13 @@ int main(int argc,char** argv)
 
     if(argc<=1)
     {
-        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE>"<<endl;
+        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> container_reclaim_size"<<endl;
         exit(0);
     }
 
     //get the initial window size
     vm->window_size = stoi(argv[2]);
+    double container_reclaim_size = stod(argv[5]);
     int PHASE_CHANGE_SIZE = stoi(argv[3]);
     int GUARD_STEP_SIZE = stoi(argv[4]);
 
@@ -209,6 +210,9 @@ int main(int argc,char** argv)
     double gaurdMem = 0.1*vm->original_limit;
     double violations,phasechanges;
     violations=phasechanges=0;
+    vm->mean = vm->sum/vm->window_size;
+    vm->fgReserved = vm->mean + gaurdMem > GUARD_STEP_SIZE*vm->stdeviation ? gaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
+
 
     while(1)
     {
@@ -223,38 +227,44 @@ int main(int argc,char** argv)
         temp = (vm->mean - gaurdMem);
         double predictedPeakbelow = temp<0?0:temp;
 
-        cout<<vm->currentMemory<<" "<<predictedPeakabove<<" "<<predictedPeakbelow<<" "<<vm->fgReserved<<" "<<con->bgReserved<<" "<<con->bgunused<<" "<<violations<<" "<<phasechanges;
+        cout<<vm->currentMemory<<","<<predictedPeakabove<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges;
 
         //vm->to_string();
 
         double currentMemory = getTotalCurrentMemory();
         vm->currentMemory = currentMemory;
 
-        vm->sum += currentMemory; 
-        vm->sum2 += currentMemory*currentMemory; 
+        vm->sum += currentMemory;
+        vm->sum2 += currentMemory*currentMemory;
         vm->window_size++;
+
+        if(currentMemory >= (predictedPeakabove)) 
+        {
+            currentMemory+=con->bgunused;
+            con->bgunused=0;
+        }
 
         if(currentMemory >= (predictedPeakabove))
         {
             vm->fgReserved = currentMemory+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
-            con->bgunused = con->bgReserved%1.5;
+            con->bgunused = fmod(con->bgReserved,container_reclaim_size);
             con->bgReserved = con->bgReserved - con->bgunused;
             violations+=1;
-            
-        }   
+
+        }
 
         if(currentMemory > predictedPeakabove)
         {
             vm->downdata.clear();
             vm->updata.push_back(currentMemory);
-           
+
         }
         if(currentMemory < predictedPeakbelow)
         {
             vm->updata.clear();
             vm->downdata.push_back(currentMemory);
-            
+
         }
         else
         {
@@ -269,13 +279,13 @@ int main(int argc,char** argv)
             vm->stdeviation = p.second;
             vm->fgReserved = *std::max_element(vm->updata.begin(),vm->updata.end())+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
-            con->bgunused = con->bgReserved%1.5;
+            con->bgunused = fmod(con->bgReserved,container_reclaim_size);
             con->bgReserved = con->bgReserved - con->bgunused;
             vm->downdata.clear();
             vm->updata.clear();
             phasechanges+=1;
 
-       
+
         }
         else if(vm->downdata.size()>=PHASE_CHANGE_SIZE)
         {
@@ -284,7 +294,7 @@ int main(int argc,char** argv)
             vm->stdeviation = p.second;
             vm->fgReserved = *std::max_element(vm->downdata.begin(),vm->downdata.end())+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
-            con->bgunused = con->bgReserved%1.5;
+            con->bgunused = fmod(con->bgReserved,container_reclaim_size);
             con->bgReserved = con->bgReserved - con->bgunused;
             vm->downdata.clear();
             vm->updata.clear();
@@ -294,7 +304,7 @@ int main(int argc,char** argv)
 
         std::this_thread::sleep_for (std::chrono::seconds(1));
         printf("\n");
-        
+
     }
 
     return 0;
