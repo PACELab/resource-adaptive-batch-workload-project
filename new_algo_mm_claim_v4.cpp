@@ -180,7 +180,7 @@ int main(int argc,char** argv)
 
     if(argc<=1)
     {
-        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> <RECLAM_PCT> "<<endl;
+        cout<<"./a.out <container_reserved_memory_in_gb> <init_window_size> <PHASE_CHANGE_SIZE> <GUARD_STEP_SIZE> <RECLAM_PCT> <CONTAINER RECLAIM SIZE> "<<endl;
         exit(0);
     }
 
