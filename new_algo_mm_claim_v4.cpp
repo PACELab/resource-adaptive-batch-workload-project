@@ -21,7 +21,7 @@ struct container
         bgReserved = 0;
         bgunused = 0;
     }
-}
+};
 
 
 //typedef unsigned long int uint64_t;
@@ -200,7 +200,7 @@ int main(int argc,char** argv)
         vm->sum+=currentMemory;
         vm->sum2+=currentMemory*currentMemory;
         vm->currentMemory = currentMemory;
-        vm->to_string();
+        //vm->to_string();
         printf("\n");
         std::this_thread::sleep_for (std::chrono::seconds(1));
 
@@ -225,7 +225,7 @@ int main(int argc,char** argv)
 
         cout<<vm->currentMemory<<" "<<predictedPeakabove<<" "<<predictedPeakbelow<<" "<<vm->fgReserved<<" "<<con->bgReserved<<" "<<con->bgunused<<" "<<violations<<" "<<phasechanges;
 
-        vm->to_string();
+        //vm->to_string();
 
         double currentMemory = getTotalCurrentMemory();
         vm->currentMemory = currentMemory;
