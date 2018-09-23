@@ -163,8 +163,10 @@ double getTotalCurrentMemory()
     for(int i=0;i<vm_count;i++)
     {
         getline(iss,vm_name,'\n');
-        double curr_mem = (stod(runCommand(("/usr/bin/virsh dommemstat "+vm_name+" | grep available | awk '{print $2}'").c_str()))/1024)/1024;
-        curr_mem -= (stod(runCommand(("/usr/bin/virsh dommemstat "+vm_name+" | grep unused | awk '{print $2}'").c_str()))/1024)/1024;
+        string available = runCommand(("/usr/bin/virsh dommemstat "+vm_name+" | grep available | awk '{print $2}'").c_str());
+        if(available == "") continue;
+        double curr_mem = stod(available)/1048576;
+        curr_mem -= (stod(runCommand(("/usr/bin/virsh dommemstat "+vm_name+" | grep unused | awk '{print $2}'").c_str())))/1048576;
         curr_mem_sum += curr_mem;
     }
 
@@ -216,7 +218,7 @@ int main(int argc,char** argv)
 
     }
 
-    double gaurdMem = reclaim_pct*vm->original_limit;
+    double minGaurdMem = reclaim_pct*vm->original_limit;
     double violations,phasechanges;
     violations=phasechanges=0;
     vm->mean = vm->sum/vm->window_size;
@@ -232,7 +234,7 @@ int main(int argc,char** argv)
         vm->mean = vm->sum/vm->window_size;
         vm->stdeviation = sqrt((vm->sum2 / vm->window_size) - (vm->mean * vm->mean));
 
-        gaurdMem = gaurdMem > GUARD_STEP_SIZE*vm->stdeviation ? gaurdMem : GUARD_STEP_SIZE*vm->stdeviation;
+        double gaurdMem = minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation ? minGaurdMem : GUARD_STEP_SIZE*vm->stdeviation;
 
         double temp = vm->mean + gaurdMem;
         double predictedPeakabove = temp>vm->original_limit?vm->original_limit:temp;
