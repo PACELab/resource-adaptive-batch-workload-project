@@ -216,7 +216,7 @@ int main(int argc,char** argv)
 
     }
 
-    double gaurdMem1 = reclaim_pct*vm->original_limit;
+    double gaurdMem = reclaim_pct*vm->original_limit;
     double violations,phasechanges;
     violations=phasechanges=0;
     vm->mean = vm->sum/vm->window_size;
@@ -232,7 +232,7 @@ int main(int argc,char** argv)
         vm->mean = vm->sum/vm->window_size;
         vm->stdeviation = sqrt((vm->sum2 / vm->window_size) - (vm->mean * vm->mean));
 
-        double gaurdMem = gaurdMem1 > GUARD_STEP_SIZE*vm->stdeviation ? gaurdMem : GUARD_STEP_SIZE*vm->stdeviation;
+        gaurdMem = gaurdMem > GUARD_STEP_SIZE*vm->stdeviation ? gaurdMem : GUARD_STEP_SIZE*vm->stdeviation;
 
         double temp = vm->mean + gaurdMem;
         double predictedPeakabove = temp>vm->original_limit?vm->original_limit:temp;
