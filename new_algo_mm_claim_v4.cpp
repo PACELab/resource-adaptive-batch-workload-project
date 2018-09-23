@@ -211,7 +211,7 @@ int main(int argc,char** argv)
         vm->sum2+=currentMemory*currentMemory;
         vm->currentMemory = currentMemory;
         //vm->to_string();
-        printf("\n");
+        cout<<vm->currentMemory<<","<<0<<","<<0<<","<<original_limit<<","<<0<<","<<0<<","<<0<<","<<0<<endl;
         std::this_thread::sleep_for (std::chrono::seconds(1));
 
     }
