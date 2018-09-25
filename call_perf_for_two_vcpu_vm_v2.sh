@@ -12,8 +12,8 @@ vmName=${1}
 #perf stat --sync -e  cycles,instructions -p ${pid1} sleep 1 &> /tmp/${vmName}_vcpu0_perf.log & 
 #perf stat --sync -e  cycles,instructions -p ${pid2} sleep 1 &> /tmp/${vmName}_vcpu1_perf.log &
 
-/home/ahmad/spark-intereference-project/call_perf_for_vcpu0_v1.sh ${vmName} &
-/home/ahmad/spark-intereference-project/call_perf_for_vcpu1_v1.sh ${vmName} &
+/home/ahmad/spark-intereference-project/call_perf_for_given_vcpu.sh ${vmName} 0 &
+/home/ahmad/spark-intereference-project/call_perf_for_given_vcpu.sh ${vmName} 1 &
 
 wait 
 
@@ -30,6 +30,9 @@ wait
 
 ipc0=$(cat /tmp/${vmName}_vcpu0_perf.log | grep instructions | awk '{print $4}')
 ipc1=$(cat /tmp/${vmName}_vcpu1_perf.log | grep instructions | awk '{print $4}')
+
+#echo ${ipc0}
+#echo ${ipc1}
 
 if [ -z "${ipc0}" ]
 then
