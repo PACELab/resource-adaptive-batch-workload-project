@@ -6,8 +6,8 @@
 #include<vector>
 #include<numeric>
 #include<fstream>
+#include<deque>
 #include<thread>
-
 
 using namespace std;
 
@@ -37,6 +37,7 @@ struct vm_info
     double sum2;
     vector<double> updata;
     vector<double> downdata;
+    deque<double> windowData;
     double  original_limit;
     int window_size;
 
@@ -112,19 +113,20 @@ string runCommand(const char *s)
 // }
 
 //code ref: https://www.strchr.com/standard_deviation_in_one_pass
-pair<double,double> findMeanAndSTD(std::vector<double>& a)
+pair< pair<double,double>,pair<double,double> > findMeanAndSTD(std::vector<double>& a,std::deque<double>& b)
 {
     if(a.size() == 0)
-        return make_pair(0.0,0.0);
+        return make_pair(make_pair(0,0),make_pair(0.0,0.0));
     double sum = 0;
     double sq_sum = 0;
     for(int i = 0; i < a.size(); ++i) {
+       b.push_back(a[i]);
        sum += a[i];
        sq_sum += a[i] * a[i];
     }
     double mean = sum / a.size();
     double variance = (sq_sum / a.size()) - (mean * mean);
-    return make_pair(mean,sqrt(variance));
+    return make_pair(make_pair(sum,sq_sum),make_pair(mean,sqrt(variance)));
 }
 
 // void add(struct vm_info* vm)
@@ -178,7 +180,7 @@ int main(int argc,char** argv)
     struct vm_info* vm = new vm_info;
     struct container * con = new container;
 
-    vm->original_limit = (stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'"))/1024)/1024;
+    vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'"))/1048576;
 
     if(argc<=1)
     {
@@ -212,6 +214,7 @@ int main(int argc,char** argv)
         vm->sum+=currentMemory;
         vm->sum2+=currentMemory*currentMemory;
         vm->currentMemory = currentMemory;
+        vm->windowData.push_back(currentMemory);
         //vm->to_string();
         cout<<vm->currentMemory<<","<<0<<","<<0<<","<<vm->original_limit<<","<<0<<","<<0<<","<<0<<","<<0<<endl;
         std::this_thread::sleep_for (std::chrono::seconds(1));
@@ -219,38 +222,46 @@ int main(int argc,char** argv)
     }
 
     double minGaurdMem = reclaim_pct*vm->original_limit;
+
     double violations,phasechanges;
     violations=phasechanges=0;
-    vm->mean = vm->sum/vm->window_size;
-    vm->fgReserved = vm->mean + gaurdMem > GUARD_STEP_SIZE*vm->stdeviation ? gaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
+
+    vm->mean = vm->sum/(double)vm->windowData.size();
+    vm->stdeviation = sqrt((vm->sum2 / (double)vm->windowData.size()) - (vm->mean * vm->mean));
+
+    double gaurdMem = (minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation)?minGaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
+    double predictedPeakabove = vm->mean+gaurdMem;
+    double predictedPeakbelow = vm->mean-gaurdMem;
+
+    vm->fgReserved = predictedPeakabove;
     con->bgReserved = (vm->original_limit - vm->fgReserved);
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
     con->bgReserved = con->bgReserved - con->bgunused;
 
-
     while(1)
     {
 
-        vm->mean = vm->sum/vm->window_size;
-        vm->stdeviation = sqrt((vm->sum2 / vm->window_size) - (vm->mean * vm->mean));
-
-        double gaurdMem = minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation ? minGaurdMem : GUARD_STEP_SIZE*vm->stdeviation;
-
-        double temp = vm->mean + gaurdMem;
-        double predictedPeakabove = temp>vm->original_limit?vm->original_limit:temp;
-        temp = (vm->mean - gaurdMem);
-        double predictedPeakbelow = temp<0?0:temp;
-
-        cout<<vm->currentMemory<<","<<predictedPeakabove<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges;
-
-        //vm->to_string();
+        cout<<vm->currentMemory<<","<<predictedPeakabove<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<endl;
 
         double currentMemory = getTotalCurrentMemory();
         vm->currentMemory = currentMemory;
 
+        vm->mean = vm->sum/(double)vm->windowData.size();
+        vm->stdeviation = sqrt((vm->sum2 / (double)vm->windowData.size()) - (vm->mean * vm->mean));
+        gaurdMem = (minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation)?minGaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
+
         vm->sum += currentMemory;
         vm->sum2 += currentMemory*currentMemory;
-        vm->window_size++;
+        vm->windowData.push_back(vm->currentMemory);
+
+        if(vm->windowData.size()>vm->window_size)
+        {
+            vm->sum -= vm->windowData[0];
+            vm->sum2 -= vm->windowData[0]*vm->windowData[0];
+            vm->windowData.pop_front();
+        }
+
+        cout<<vm->windowData.size()<<endl;
 
         if(currentMemory >= fg_reserved_pct*(vm->fgReserved)) 
         {
@@ -274,7 +285,7 @@ int main(int argc,char** argv)
             vm->updata.push_back(currentMemory);
 
         }
-        if(currentMemory < predictedPeakbelow)
+        else if(currentMemory < predictedPeakbelow)
         {
             vm->updata.clear();
             vm->downdata.push_back(currentMemory);
@@ -288,9 +299,20 @@ int main(int argc,char** argv)
 
         if(vm->updata.size()>=PHASE_CHANGE_SIZE)
         {
-            pair<double,double> p = findMeanAndSTD(vm->updata);
-            vm->mean = p.first;
-            vm->stdeviation = p.second;
+            vm->windowData.clear();
+
+            pair<pair<double,double>,pair<double,double>> p = findMeanAndSTD(vm->updata,vm->windowData);
+
+            vm->mean = p.second.first;
+            vm->stdeviation = p.second.second;
+            vm->sum = p.first.first;
+            vm->sum2 = p.first.second;
+
+            
+            gaurdMem = (minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation)?minGaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
+            predictedPeakabove = vm->mean+gaurdMem;
+            predictedPeakbelow = vm->mean-gaurdMem;
+
             vm->fgReserved = *std::max_element(vm->updata.begin(),vm->updata.end())+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
             con->bgunused = fmod(con->bgReserved,container_reclaim_size);
@@ -303,9 +325,19 @@ int main(int argc,char** argv)
         }
         else if(vm->downdata.size()>=PHASE_CHANGE_SIZE)
         {
-            pair<double,double> p = findMeanAndSTD(vm->downdata);
-            vm->mean = p.first;
-            vm->stdeviation = p.second;
+            vm->windowData.clear();
+
+            pair<pair<double,double>,pair<double,double>> p = findMeanAndSTD(vm->downdata,vm->windowData);
+           
+            vm->mean = p.second.first;
+            vm->stdeviation = p.second.second;
+            vm->sum = p.first.first;
+            vm->sum2 = p.first.second;
+
+            gaurdMem = (minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation)?minGaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
+            predictedPeakabove = vm->mean+gaurdMem;
+            predictedPeakbelow = vm->mean-gaurdMem;
+
             vm->fgReserved = *std::max_element(vm->downdata.begin(),vm->downdata.end())+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
             con->bgunused = fmod(con->bgReserved,container_reclaim_size);
@@ -317,7 +349,6 @@ int main(int argc,char** argv)
         }
 
         std::this_thread::sleep_for (std::chrono::seconds(1));
-        printf("\n");
 
     }
 
