@@ -229,14 +229,14 @@ int main(int argc,char** argv)
     vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'"))/1048576;
     //subtract container mmemory from the total allocated memory
     vm->original_limit -= stod(argv[1]);   // argv[1] == <container_reserved_memory_in_gb>
-
+    
     vm->fgReserved = getTotalActualMemory();
     con->bgReserved = (vm->original_limit - vm->fgReserved);
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
     con->bgReserved = con->bgReserved - con->bgunused;
 
 
-
+    
     //gathering initial data for the defined running window
     for(int i=0;i<vm->window_size;i++)
     {
@@ -271,7 +271,7 @@ int main(int argc,char** argv)
     while(1)
     {
 
-        cout<<vm->currentMemory<<","<<predictedPeakabove<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<endl;
+        cout<<vm->currentMemory<<","<<predictedPeakabove<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<","<<vm->mean<<","<<vm->stdeviation<<endl;
 
         double currentMemory = getTotalCurrentMemory();
         vm->currentMemory = currentMemory;
@@ -291,9 +291,16 @@ int main(int argc,char** argv)
             vm->windowData.pop_front();
         }
 
+        if(vm->stdeviation<0.5)
+        {
+            gaurdMem = (minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation)?minGaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
+            predictedPeakabove = vm->mean+gaurdMem;
+            predictedPeakbelow = vm->mean-gaurdMem;
+        }
+
         //cout<<vm->windowData.size()<<endl;
 
-        if(currentMemory >= fg_reserved_pct*(vm->fgReserved))
+        if(currentMemory >= fg_reserved_pct*(vm->fgReserved)) 
         {
             currentMemory-=con->bgunused;
             con->bgunused=0;
@@ -301,6 +308,7 @@ int main(int argc,char** argv)
 
         if(currentMemory >= fg_reserved_pct*(vm->fgReserved))
         {
+
             vm->fgReserved = currentMemory+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
             con->bgunused = fmod(con->bgReserved,container_reclaim_size);
@@ -338,7 +346,7 @@ int main(int argc,char** argv)
             vm->sum = p.first.first;
             vm->sum2 = p.first.second;
 
-
+            
             gaurdMem = (minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation)?minGaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
             predictedPeakabove = vm->mean+gaurdMem;
             predictedPeakbelow = vm->mean-gaurdMem;
@@ -358,7 +366,7 @@ int main(int argc,char** argv)
             vm->windowData.clear();
 
             pair<pair<double,double>,pair<double,double>> p = findMeanAndSTD(vm->downdata,vm->windowData);
-
+           
             vm->mean = p.second.first;
             vm->stdeviation = p.second.second;
             vm->sum = p.first.first;
