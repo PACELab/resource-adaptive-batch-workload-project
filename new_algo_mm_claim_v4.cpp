@@ -175,12 +175,35 @@ double getTotalCurrentMemory()
     return curr_mem_sum;
 }
 
+
+double getTotalActualMemory()
+{
+    string data = runCommand("/usr/bin/virsh list | /bin/grep running | /usr/bin/awk '{print $2}'");
+
+    int vm_count = count(data.begin(),data.end(),'\n');
+
+    string vm_name;
+
+    double curr_mem_sum = 0;
+
+    istringstream iss(data);
+    for(int i=0;i<vm_count;i++)
+    {
+        getline(iss,vm_name,'\n');
+
+        string available = runCommand(("/usr/bin/virsh dommemstat "+vm_name+" | grep actual | awk '{print $2}'").c_str());
+        if(available == "") continue;
+
+        curr_mem_sum += stod(available)/1048576;
+    }
+
+    return curr_mem_sum;
+}
+
 int main(int argc,char** argv)
 {
     struct vm_info* vm = new vm_info;
     struct container * con = new container;
-
-    vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'"))/1048576;
 
     if(argc<=1)
     {
@@ -203,9 +226,16 @@ int main(int argc,char** argv)
     int PHASE_CHANGE_SIZE = stoi(argv[3]);
     double GUARD_STEP_SIZE = stof(argv[4]);
 
+    vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'"))/1048576;
     //subtract container mmemory from the total allocated memory
     vm->original_limit -= stod(argv[1]);   // argv[1] == <container_reserved_memory_in_gb>
-    //container memory reserved  = vm->original_limit - vm->memory_reserved;
+
+    vm->fgReserved = getTotalActualMemory();
+    con->bgReserved = (vm->original_limit - vm->fgReserved);
+    con->bgunused = fmod(con->bgReserved,container_reclaim_size);
+    con->bgReserved = con->bgReserved - con->bgunused;
+
+
 
     //gathering initial data for the defined running window
     for(int i=0;i<vm->window_size;i++)
@@ -216,7 +246,7 @@ int main(int argc,char** argv)
         vm->currentMemory = currentMemory;
         vm->windowData.push_back(currentMemory);
         //vm->to_string();
-        cout<<vm->currentMemory<<","<<0<<","<<0<<","<<vm->original_limit<<","<<0<<","<<0<<","<<0<<","<<0<<endl;
+        cout<<vm->currentMemory<<","<<0<<","<<0<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<0<<","<<0<<endl;
         std::this_thread::sleep_for (std::chrono::seconds(1));
 
     }
@@ -261,9 +291,9 @@ int main(int argc,char** argv)
             vm->windowData.pop_front();
         }
 
-        cout<<vm->windowData.size()<<endl;
+        //cout<<vm->windowData.size()<<endl;
 
-        if(currentMemory >= fg_reserved_pct*(vm->fgReserved)) 
+        if(currentMemory >= fg_reserved_pct*(vm->fgReserved))
         {
             currentMemory-=con->bgunused;
             con->bgunused=0;
@@ -308,7 +338,7 @@ int main(int argc,char** argv)
             vm->sum = p.first.first;
             vm->sum2 = p.first.second;
 
-            
+
             gaurdMem = (minGaurdMem > GUARD_STEP_SIZE*vm->stdeviation)?minGaurdMem:GUARD_STEP_SIZE*vm->stdeviation;
             predictedPeakabove = vm->mean+gaurdMem;
             predictedPeakbelow = vm->mean-gaurdMem;
@@ -328,7 +358,7 @@ int main(int argc,char** argv)
             vm->windowData.clear();
 
             pair<pair<double,double>,pair<double,double>> p = findMeanAndSTD(vm->downdata,vm->windowData);
-           
+
             vm->mean = p.second.first;
             vm->stdeviation = p.second.second;
             vm->sum = p.first.first;
