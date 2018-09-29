@@ -172,33 +172,39 @@ int main(int argc, char** argv)
     double couldBeContBW,temp,guardUpperLimit,guardLowerLimit,curBW;
     int phaseChangeSamples,phaseChangeState;
     double stdDevThreshold,netBWGuardBand,containerChangeRatio,temp_stddev,reduceContBW=0.0f,vmLowerBW=5;
-    int resetWindow = 0, resetIters=0,iterCount=0;
+    int resetWindow = 0, resetIters=0,iterCount=0,numContainers=0,i=0;
     // TODO: Fetch original network bandwidth of VM - Hardcoding it to 944 Mbits/sec
     vm->original_limit = 125; // Units = Mbytes/sec (944/8)
     vm->contMaxBW = 100;
     vmLowerBW = 5;
     if(argc<=1){
-        cout<< "./a.out <container_name> <container_reserved_bandwidth_in_Mbytes_per_sec> <phaseChangeSamples> <NET-BW-GUARD-BAND> <THRSLD_STEP_SIZE>" <<endl;
+        cout<< "./network_control <container_name> <container_reserved_bandwidth_in_Mbytes_per_sec> <phaseChangeSamples> <NET-BW-GUARD-BAND> <THRSLD_STEP_SIZE>" <<endl;
         exit(0);
     }
 
     // Get the initial window size
-    string container_name = argv[1];
+    numContainers = stoi(argv[1]);
     vm->origContainerBW =  stod(argv[2]);
-
     phaseChangeSamples = stoi(argv[3]);
     vm->window_size = phaseChangeSamples;
     netBWGuardBand = stof(argv[4]);
     stdDevThreshold = stof(argv[5]);
     reduceContBW = stof(argv[6]);
+
+    printf("\t  numContainers: %d phaseChangeSamples: %d netBWGuardBand: %.3f stdDevThreshold: %.2f reduceContBW: %.2f \n",numContainers,phaseChangeSamples,netBWGuardBand,stdDevThreshold,reduceContBW);
+    string container_name[numContainers];
+    for(i=0;i<numContainers;i++){
+      container_name[i] = argv[7+i];  
+      printf("\t Cont-#: %d name: %s \n",i,container_name[i].c_str());
+    } 
+    printf("\t cont[0]: %s \n",container_name[0].c_str());
     
-    printf("\t  container_name: %s phaseChangeSamples: %d netBWGuardBand: %.3f stdDevThreshold: %.2f reduceContBW: %.2f \n",(char*)container_name.c_str(),phaseChangeSamples,netBWGuardBand,stdDevThreshold,reduceContBW);
     containerChangeRatio = 0.2;
     phaseChangeState = phase_change_nil;
     
     vm->curContBW = 0;//vm->origContainerBW;
     vm->container_name = argv[1];
-    update_container(container_name, INTERFACE, vm->origContainerBW*8, BURST, LATENCY);       
+    for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, vm->origContainerBW*8, BURST, LATENCY);       
     vm->curContBW = vm->origContainerBW;
 
     // Subtract container bandwidth from the total bandwidth
@@ -296,8 +302,8 @@ int main(int argc, char** argv)
             // TODO: Handle case where stdev ~ 0
             vm->vm_bwReserved = *std::max_element(vm->downdata.begin(), vm->downdata.end()) + (stdDevThreshold * vm->stdeviation);
         }else{
-	continue;
-	}
+    continue;
+    }
 
         //std::this_thread::sleep_for (std::chrono::seconds(1));
 
@@ -312,14 +318,16 @@ int main(int argc, char** argv)
         if( vm->curContBW<couldBeContBW ) {
             //vm->calcRate(2);     
             printf("\t 1. couldBeContBW: %.3f vm->curContBW: %.3f ratio: %.3f \n",couldBeContBW,vm->curContBW,(couldBeContBW/vm->curContBW));
-            update_container(container_name, INTERFACE, couldBeContBW*8, BURST, LATENCY);    
+            //update_container(container_name[0], INTERFACE, couldBeContBW*8, BURST, LATENCY);    
+            for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, couldBeContBW*8/numContainers, BURST, LATENCY);       
             vm->curContBW = couldBeContBW;   
         }else if(vm->curContBW>couldBeContBW){
             //couldBeContBW = vm->origContainerBW;
             printf("\t 2. couldBeContBW: %.3f vm->curContBW: %.3f ratio: %.3f \n",couldBeContBW,vm->curContBW,(couldBeContBW/vm->curContBW));
             double reduceBWto = reduceContBW*couldBeContBW;
             couldBeContBW = (reduceBWto<vm->origContainerBW) ? vm->origContainerBW : reduceBWto;
-            update_container(container_name, INTERFACE, couldBeContBW*8, BURST, LATENCY);       
+            //update_container(container_name[0], INTERFACE, couldBeContBW*8, BURST, LATENCY);       
+            for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, couldBeContBW*8/numContainers, BURST, LATENCY);       
             vm->curContBW = couldBeContBW;  
             //vm->calcRate(3);     
         } 
