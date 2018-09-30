@@ -39,9 +39,9 @@ struct vm_info
     int windowSize; 
 };
 
-string runCommand(const char *s)
+std::string runCommand(const char *s)
 {
-    const int max_buffer = 1024;
+    const int max_buffer = 2048;
     char buffer[max_buffer];
     std::string data;
     FILE* stream = popen(s,"r");
@@ -69,29 +69,42 @@ pair<float,float> findMeanAndSTD(std::vector<float>& a)
     return make_pair(mean,sqrt(variance));
 }
 
-float getMeanIPC()
-{
-    string res = runCommand("sudo sh -c \"/home/ahmad/spark-intereference-project/call_perf_for_two_vcpu_vm_v2.sh server3-vm1\"");
+float getMeanIPC(std::string vmName)
+{ 
+    char command[1000]="sudo sh -c \"/home/ahmad/spark-intereference-project/call_perf_for_two_vcpu_vm_v2.sh ";
+    strcat(command,vmName.c_str());
+    strcat(command,"\"");
+    //cout <<"command: " << command <<endl;
+
+    std::string res = runCommand(command);
+
+    //cout<<"ipc res: " << res << endl;
+
     //cout << res << endl; 
     if(res == "") return 0; 
     float ipc=0;
     try
     {
 	ipc=stof(res);
+//	cout<<"converted_ipc: " << ipc << endl;
     }
     catch(...)
     {
-        cout<<"ipc script reutrn null" << endl; 
+       // cout<<"ipc script reutrn null" << endl; 
 	ipc=0; 
     }
 
-     return ipc; 
+     	//cout<<"converted_ipc: " << ipc << endl;
+
+	return ipc; 
 }
 
 
-float getMeanLLCLoadMisses()
+float getMeanLLCLoadMisses(std::string vmName)
 {
-    string res = runCommand("/home/ahmad/spark-intereference-project/get_llc_miss_for_two_vcpus.sh server3-vm1");
+    char command[1000]="/home/ahmad/spark-intereference-project/get_llc_miss_for_two_vcpus.sh ";
+    strcat(command,vmName.c_str());
+    std::string res = runCommand(command);
     //cout << res << endl; 
     if(res == "") return 0;
     float llcMiss=0;
@@ -108,9 +121,11 @@ float getMeanLLCLoadMisses()
 }
 
 
-float getMeanCacheMisses()
+float getMeanCacheMisses(std::string vmName)
 {
-    string res = runCommand("/home/ahmad/spark-intereference-project/get_cache_miss_for_two_vcpus.sh server3-vm1");
+    char command[1000]="/home/ahmad/spark-intereference-project/get_cache_miss_for_two_vcpus.sh ";
+    strcat(command,vmName.c_str()); 
+    std::string res = runCommand(command);
     //cout << res << endl; 
     if(res == "") return 0;
     float cacheMiss=0;
@@ -130,7 +145,7 @@ float getMeanCacheMisses()
 
 void setCpuQuotaForDocker(int cpuQuota)
 {
-	char command[]="sudo sh -c \"/home/ahmad/spark-intereference-project/set_cpu_quota_for_docker.sh ";
+	char command[1000]="sudo sh -c \"/home/ahmad/spark-intereference-project/set_cpu_quota_for_docker.sh ";
 	std::string quota = std::to_string(cpuQuota);
 	strcat(command,quota.c_str());
 	strcat(command, "\"");
@@ -155,9 +170,9 @@ int main(int argc,char** argv)
     struct vm_info* vmInfo = new vm_info;
     struct container * conInfo = new container;
 
-    if(argc<=7)
+    if(argc<=8)
     {
-	cout <<"windowSize, cpuIncreaseValue, cpuQuotaDecreasingRate, minCpuQuota, maxCpuQuota, stdFactor, timeToRun in order are needed"<<endl;
+	cout <<"windowSize, cpuIncreaseValue, cpuQuotaDecreasingRate, minCpuQuota, maxCpuQuota, stdFactor, timeToRun, VM1 name  in order are needed"<<endl;
 	exit(0);     
     }
 
@@ -168,6 +183,7 @@ int main(int argc,char** argv)
     int maxCpuQuota;
     float stdFactor;
     int timeToRun;    
+    std::string vmName; 
     try{
     	windowSize = stoi(argv[1]);
     	cpuIncreaseValue=stoi(argv[2]);
@@ -176,6 +192,7 @@ int main(int argc,char** argv)
     	maxCpuQuota=stoi(argv[5]);
     	stdFactor=stof(argv[6]); 
     	timeToRun = stoi(argv[7]);
+	vmName=argv[8];
     } 
     catch(...)
     {
@@ -185,7 +202,7 @@ int main(int argc,char** argv)
 
     std::time_t currTime = std::time(nullptr);
 
-    cout<<currTime<<"-"<<"input_info:"<<windowSize<<","<<cpuIncreaseValue<<","<<cpuQuotaDecreasingRate<<","<<minCpuQuota<<","<<maxCpuQuota<<","<<stdFactor<<","<<timeToRun<<endl;
+    cout<<currTime<<"-"<<"input_info:"<<windowSize<<","<<cpuIncreaseValue<<","<<cpuQuotaDecreasingRate<<","<<minCpuQuota<<","<<maxCpuQuota<<","<<stdFactor<<","<<timeToRun<<","<<vmName<<endl;
 
   
     float phaseChangeBound=0;
@@ -208,10 +225,12 @@ int main(int argc,char** argv)
     for (int i=0;i<windowSize;i++)
     {
 	
-	float ipc=getMeanIPC();
+	float ipc=getMeanIPC(vmName);
+	//cout << "after ipc: "<< ipc << endl;
 
-	float llcMisses=getMeanLLCLoadMisses();
-	float cacheMisses=getMeanCacheMisses();
+
+	float llcMisses=getMeanLLCLoadMisses(vmName);
+	float cacheMisses=getMeanCacheMisses(vmName);
 
 	vmInfo->window.push_back(ipc);
 	vmInfo->sum += ipc;
@@ -240,9 +259,9 @@ int main(int argc,char** argv)
     while(1)
     {
 
-	float ipc=getMeanIPC(); 
-	float llcMisses=getMeanLLCLoadMisses();
-        float cacheMisses=getMeanCacheMisses();
+	float ipc=getMeanIPC(vmName); 
+	float llcMisses=getMeanLLCLoadMisses(vmName);
+        float cacheMisses=getMeanCacheMisses(vmName);
 
 	cout <<currTime <<"-"<<"ipc_info: "<< ipc << "," << vmInfo->mean <<","<<vmInfo->stdeviation<<"," << lowerBound <<"," <<stableBound << ","<<quotaIncreaingBound<<","<<quotaIncreasingUpperBound<<","<<phaseChangeBound <<"," <<reFillMovingWindows<<"," <<llcMisses <<"," << cacheMisses <<","<<conInfo->cpuQuota<< endl;
 	 	
