@@ -267,7 +267,7 @@ int main(int argc,char** argv)
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
     con->bgReserved = con->bgReserved - con->bgunused;
 
-    int timeAfterViolation=-1;     
+    //int timeAfterViolation=-1;     
     while(1)
     {
 
@@ -299,6 +299,7 @@ int main(int argc,char** argv)
         }*/
 
         //cout<<vm->windowData.size()<<endl;
+	/*
 	if(timeAfterViolation>0) 
         {
 	       timeAfterViolation=timeAfterViolation-1;
@@ -308,7 +309,7 @@ int main(int argc,char** argv)
                 predictedPeakbelow = vm->mean-gaurdMem; 
                 timeAfterViolation=-1;
         }
-
+	*/
 
         if(currentMemory >= fg_reserved_pct*(vm->fgReserved)) 
         {
@@ -329,7 +330,7 @@ int main(int argc,char** argv)
             con->bgReserved = con->bgReserved - con->bgunused;
             violations+=1;
 	   
-	    timeAfterViolation=vm->window_size;
+	    //timeAfterViolation=vm->window_size;
 
         }
 
