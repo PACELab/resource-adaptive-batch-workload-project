@@ -233,6 +233,8 @@ int main(int argc,char** argv)
     con->bgReserved = (vm->original_limit - vm->fgReserved);
     runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
     runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
+    runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
+    runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
     con->bgReserved = con->bgReserved - con->bgunused;
 
@@ -266,6 +268,8 @@ int main(int argc,char** argv)
 
     vm->fgReserved = vm->mean+gaurdMem;
     con->bgReserved = (vm->original_limit - vm->fgReserved);
+    runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
+    runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
     runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
     runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
@@ -334,6 +338,9 @@ int main(int argc,char** argv)
       
       con->bgunused = fmod(con->bgReserved,container_reclaim_size);
       con->bgReserved = con->bgReserved - con->bgunused;
+		runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
+    runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
+    
       violations+=1;
 	   
 	    timeAfterViolation=vm->window_size;
@@ -371,6 +378,9 @@ int main(int argc,char** argv)
     runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
             con->bgunused = fmod(con->bgReserved,container_reclaim_size);
             con->bgReserved = con->bgReserved - con->bgunused;
+		runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
+    runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
+    
             vm->downdata.clear(); 
             phasechanges+=1;
 
