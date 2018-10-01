@@ -34,10 +34,10 @@ void update_container(string container_name, string interface, int rate, int bur
 {
     // Whenever actual value of bandwidth reserved changes, update the container
     // tc qdisc del dev eth0 root
-    runCommand(("/usr/bin/docker exec "+container_name+" tc qdisc del dev "+interface+" root ").c_str());
+    runCommand(("/usr/bin/docker exec -u root -t -i "+container_name+" tc qdisc del dev "+interface+" root ").c_str());
     // tc qdisc add dev eth0 root tbf rate 50mbit burst 32kbit latency 400ms
-    string updateCommand = ("/usr/bin/docker exec "+container_name+" tc qdisc add dev "+interface+" root tbf rate "+std::to_string(rate)+"mbit burst "+std::to_string(burst)+"kbit latency "+std::to_string(latency)+"ms ").c_str();
-    runCommand(("/usr/bin/docker exec "+container_name+" tc qdisc add dev "+interface+" root tbf rate "+std::to_string(rate)+"mbit burst "+std::to_string(burst)+"kbit latency "+std::to_string(latency)+"ms ").c_str());
+    string updateCommand = ("/usr/bin/docker exec -u root -t -i "+container_name+" tc qdisc add dev "+interface+" root tbf rate "+std::to_string(rate)+"mbit burst "+std::to_string(burst)+"kbit latency "+std::to_string(latency)+"ms ").c_str();
+    runCommand(("/usr/bin/docker exec -u root -t -i "+container_name+" tc qdisc add dev "+interface+" root tbf rate "+std::to_string(rate)+"mbit burst "+std::to_string(burst)+"kbit latency "+std::to_string(latency)+"ms ").c_str());
     cout<<"Updated docker network limits! rate "<<rate<<endl;
     cout<<"Command: "<<updateCommand<<"\n"<<endl;
 }
@@ -178,7 +178,7 @@ int main(int argc, char** argv)
     vm->contMaxBW = 100;
     vmLowerBW = 5;
     if(argc<=1){
-        cout<< "./network_control <container_name> <container_reserved_bandwidth_in_Mbytes_per_sec> <phaseChangeSamples> <NET-BW-GUARD-BAND> <THRSLD_STEP_SIZE>" <<endl;
+        cout<< "./network_control <numContainers> <container_reserved_bandwidth_in_Mbytes_per_sec> <phaseChangeSamples> <NET-BW-GUARD-BAND> <THRSLD_STEP_SIZE> <container1_name> <container2_name>" <<endl;
         exit(0);
     }
 
@@ -282,7 +282,11 @@ int main(int argc, char** argv)
 
         //printf("iterCount: %d vmCurBW: %f vm_bwReserved: %.2f upper: %f lower: %f couldBeContBW: %.3f mean: %.2f std_dev: %.2f \n",iterCount,vm->curBW,vm->vm_bwReserved,guardUpperLimit,guardLowerLimit,couldBeContBW,vm->mean,vm->stdeviation);
         //printf("pcstate: %d curContBW: %.3f  updata.size(): %ld downdata.size(): %ld \n",phaseChangeState,vm->curContBW,vm->updata.size(),vm->downdata.size());
-
+        // time,fg_BW,fg_reserved,fg_upperLimit,fg_lowerLimit,fg_mean,fg_stddev,couldBe_bg_BW,cur_bg_limit,num_up_samples,num_down_samples
+        printf("netcontrol_info,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d\n"
+            ,iterCount,vm->curBW,vm->vm_bwReserved,guardUpperLimit,
+            guardLowerLimit,vm->mean,vm->stdeviation,couldBeContBW,
+            vm->curContBW,vm->updata.size(),vm->downdata.size());        
         // On a phase change, only the anomalies are considered for mean & std deviation
         if(vm->updata.size() >= phaseChangeSamples){
             pair<double,double> p = getSumnSumSq(vm->updata);
@@ -317,19 +321,25 @@ int main(int argc, char** argv)
 
         if( vm->curContBW<couldBeContBW ) {
             //vm->calcRate(2);     
-            printf("\t 1. couldBeContBW: %.3f vm->curContBW: %.3f ratio: %.3f \n",couldBeContBW,vm->curContBW,(couldBeContBW/vm->curContBW));
+            printf("1. couldBeContBW: %.3f vm->curContBW: %.3f ratio: %.3f \n",couldBeContBW,vm->curContBW,(couldBeContBW/vm->curContBW));
+            //printf("\titerCount: %d vmCurBW: %f vm_bwReserved: %.2f upper: %f lower: %f couldBeContBW: %.3f mean: %.2f std_dev: %.2f \n",iterCount,vm->curBW,vm->vm_bwReserved,guardUpperLimit,guardLowerLimit,couldBeContBW,vm->mean,vm->stdeviation);
+            //printf("\tpcstate: %d curContBW: %.3f  updata.size(): %ld downdata.size(): %ld \n",phaseChangeState,vm->curContBW,vm->updata.size(),vm->downdata.size());
+
             //update_container(container_name[0], INTERFACE, couldBeContBW*8, BURST, LATENCY);    
-            for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, couldBeContBW*8/numContainers, BURST, LATENCY);       
+            //for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, couldBeContBW*8/numContainers, BURST, LATENCY);       
             vm->curContBW = couldBeContBW;   
+            vm->downdata.clear();vm->updata.clear();
         }else if(vm->curContBW>couldBeContBW){
             //couldBeContBW = vm->origContainerBW;
-            printf("\t 2. couldBeContBW: %.3f vm->curContBW: %.3f ratio: %.3f \n",couldBeContBW,vm->curContBW,(couldBeContBW/vm->curContBW));
             double reduceBWto = reduceContBW*couldBeContBW;
             couldBeContBW = (reduceBWto<vm->origContainerBW) ? vm->origContainerBW : reduceBWto;
+            printf("2. couldBeContBW: %.3f vm->curContBW: %.3f ratio: %.3f \n",couldBeContBW,vm->curContBW,(couldBeContBW/vm->curContBW));
+            //printf("\titerCount: %d vmCurBW: %f vm_bwReserved: %.2f upper: %f lower: %f couldBeContBW: %.3f mean: %.2f std_dev: %.2f \n",iterCount,vm->curBW,vm->vm_bwReserved,guardUpperLimit,guardLowerLimit,couldBeContBW,vm->mean,vm->stdeviation);
+            //printf("\tpcstate: %d curContBW: %.3f  updata.size(): %ld downdata.size(): %ld \n",phaseChangeState,vm->curContBW,vm->updata.size(),vm->downdata.size());
             //update_container(container_name[0], INTERFACE, couldBeContBW*8, BURST, LATENCY);       
-            for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, couldBeContBW*8/numContainers, BURST, LATENCY);       
+            //for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, couldBeContBW*8/numContainers, BURST, LATENCY);       
             vm->curContBW = couldBeContBW;  
-            //vm->calcRate(3);     
+            vm->downdata.clear();vm->updata.clear();
         } 
     }
 
