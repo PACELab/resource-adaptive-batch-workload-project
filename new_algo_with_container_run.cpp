@@ -248,8 +248,8 @@ cout<<(int)con->bgReserved*32768<<endl;
         vm->currentMemory = currentMemory;
         vm->windowData.push_back(currentMemory);
         //vm->to_string();
-        cout<<vm->currentMemory<<","<<0<<","<<0<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<0<<","<<0<<endl;
-        std::this_thread::sleep_for (std::chrono::seconds(1));
+       cout<<vm->currentMemory<<","<<0<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<0<<","<<0<<","<<0<<","<<0<<","<<runCommand("docker stats --format \"{{.MemUsage}}\" --no-stream |  awk '{ print $1 }'")<<endl;
+       std::this_thread::sleep_for (std::chrono::seconds(1));
 
     }
 
@@ -276,7 +276,7 @@ cout<<(int)con->bgReserved*32768<<endl;
     while(1)
     {
 
-        cout<<vm->currentMemory<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<","<<vm->mean<<","<<vm->stdeviation<<endl;
+        cout<<vm->currentMemory<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<","<<vm->mean<<","<<vm->stdeviation<<","<<runCommand("docker stats --format \"{{.MemUsage}}\" --no-stream |  awk '{ print $1 }'")<<endl;
 
         double currentMemory = getTotalCurrentMemory();
         vm->currentMemory = currentMemory;
