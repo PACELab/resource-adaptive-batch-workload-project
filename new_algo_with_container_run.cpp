@@ -232,7 +232,7 @@ int main(int argc,char** argv)
     vm->fgReserved = getTotalActualMemory();
     con->bgReserved = (vm->original_limit - vm->fgReserved);
     cout<<runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
-    cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(int(con->bgReserved*32768))).c_str());
+    cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string((int)con->bgReserved*32768)).c_str());
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
     con->bgReserved = con->bgReserved - con->bgunused;
 
@@ -267,7 +267,7 @@ int main(int argc,char** argv)
     vm->fgReserved = vm->mean+gaurdMem;
     con->bgReserved = (vm->original_limit - vm->fgReserved);
     cout<<runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
-    cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(int(con->bgReserved*32768))).c_str());
+    cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string((int)con->bgReserved*32768)).c_str());
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
     con->bgReserved = con->bgReserved - con->bgunused;
 
@@ -332,8 +332,8 @@ int main(int argc,char** argv)
       con->bgunused = fmod(con->bgReserved,container_reclaim_size);
       con->bgReserved = con->bgReserved - con->bgunused;
 cout<<runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
-    cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(int(con->bgReserved*32768))).c_str());
-          violations+=1;
+    cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string((int)con->bgReserved*32768)).c_str());
+              violations+=1;
 	   
 	    timeAfterViolation=vm->window_size;
 
@@ -369,8 +369,8 @@ cout<<runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160
             con->bgunused = fmod(con->bgReserved,container_reclaim_size);
             con->bgReserved = con->bgReserved - con->bgunused;
 cout<<runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
-    cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string(int(con->bgReserved*32768))).c_str());
-               vm->downdata.clear(); 
+    cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string((int)con->bgReserved*32768)).c_str());
+                   vm->downdata.clear(); 
             phasechanges+=1;
 
         }
