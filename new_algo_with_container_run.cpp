@@ -232,7 +232,7 @@ int main(int argc,char** argv)
     vm->fgReserved = getTotalActualMemory();
     con->bgReserved = (vm->original_limit - vm->fgReserved);
     runCommand("./killStress.sh 01160ff14a31");
-    runCommand("./runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32).c_str());
+    runCommand(("./runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
     con->bgReserved = con->bgReserved - con->bgunused;
 
@@ -267,7 +267,7 @@ int main(int argc,char** argv)
     vm->fgReserved = vm->mean+gaurdMem;
     con->bgReserved = (vm->original_limit - vm->fgReserved);
     runCommand("./killStress.sh 01160ff14a31");
-    runCommand("./runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32).c_str());
+    runCommand(("./runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
     con->bgReserved = con->bgReserved - con->bgunused;
 
@@ -330,7 +330,7 @@ int main(int argc,char** argv)
 
 	    con->bgReserved = (vm->original_limit - vm->fgReserved);
       runCommand("./killStress.sh 01160ff14a31");
-    runCommand("./runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32).c_str());
+    runCommand(("./runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
       
       con->bgunused = fmod(con->bgReserved,container_reclaim_size);
       con->bgReserved = con->bgReserved - con->bgunused;
@@ -368,7 +368,7 @@ int main(int argc,char** argv)
             //vm->fgReserved = *std::max_element(vm->downdata.begin(),vm->downdata.end())+gaurdMem;
             con->bgReserved = (vm->original_limit - vm->fgReserved);
             runCommand("./killStress.sh 01160ff14a31");
-    runCommand("./runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32).c_str());
+    runCommand(("./runStress.sh 01160ff14a31 32 "+ to_string(con->bgReserved/32)).c_str());
             con->bgunused = fmod(con->bgReserved,container_reclaim_size);
             con->bgReserved = con->bgReserved - con->bgunused;
             vm->downdata.clear(); 
