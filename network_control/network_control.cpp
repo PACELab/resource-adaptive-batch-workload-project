@@ -204,7 +204,7 @@ int main(int argc, char** argv)
     
     vm->curContBW = 0;//vm->origContainerBW;
     vm->container_name = argv[1];
-    for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, vm->origContainerBW*8, BURST, LATENCY);       
+    //for(i=0;i<numContainers;i++) update_container(container_name[i], INTERFACE, vm->origContainerBW*8, BURST, LATENCY);       
     vm->curContBW = vm->origContainerBW;
 
     // Subtract container bandwidth from the total bandwidth
