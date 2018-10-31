@@ -231,7 +231,7 @@ int main(int argc,char** argv)
     
     vm->fgReserved = getTotalActualMemory();
     con->bgReserved = (vm->original_limit - vm->fgReserved);
-//	cout<<(int)con->bgReserved*32768<<endl;
+cout<<(int)con->bgReserved*32768<<endl;
     cout<<runCommand("sh /home/ahmad/spark-intereference-project/killStress.sh 01160ff14a31");
     cout<<endl<<runCommand(("sh /home/ahmad/spark-intereference-project/runStress.sh 01160ff14a31 32 "+ to_string((int)con->bgReserved*32768)).c_str());
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
@@ -248,8 +248,8 @@ int main(int argc,char** argv)
         vm->currentMemory = currentMemory;
         vm->windowData.push_back(currentMemory);
         //vm->to_string();
-        cout<<vm->currentMemory<<","<<0<<","<<0<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<0<<","<<0<<endl;
-        std::this_thread::sleep_for (std::chrono::seconds(1));
+       cout<<vm->currentMemory<<","<<0<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<0<<","<<0<<","<<0<<","<<0<<","<<runCommand("docker stats --format \"{{.MemUsage}}\" --no-stream |  awk '{ print $1 }'")<<endl;
+       std::this_thread::sleep_for (std::chrono::seconds(1));
 
     }
 
@@ -276,7 +276,7 @@ int main(int argc,char** argv)
     while(1)
     {
 
-        cout<<vm->currentMemory<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<","<<vm->mean<<","<<vm->stdeviation<<endl;
+        cout<<vm->currentMemory<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<","<<vm->mean<<","<<vm->stdeviation<<","<<runCommand("docker stats --format \"{{.MemUsage}}\" --no-stream |  awk '{ print $1 }'")<<endl;
 
         double currentMemory = getTotalCurrentMemory();
         vm->currentMemory = currentMemory;
