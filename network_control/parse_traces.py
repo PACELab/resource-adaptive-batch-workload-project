@@ -40,11 +40,10 @@ with open(file_name) as fp:
 print res
 # print 'Packets/sec: ', packet_cnt
 
-
 _keys = res.keys()
 _keys.sort()
 
 # default output of this script goes to this file
 with open('trace_result.txt', 'w') as fp:
     for key in _keys:
-        fp.write('{} {} \n'.format(key, res[key][0] + res[key][1]))
+        fp.write('{} \n'.format((res[key][0] + res[key][1]) * 11.8))
