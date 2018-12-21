@@ -177,7 +177,7 @@ bool fetchBandwidthVal(ifstream& infile, long *val)
     return true;
 }
 
-int printTrace = 0, guardUpperLimit =0, guardLowerLimit=0;
+int printTrace = 0; double guardUpperLimit =0, guardLowerLimit=0;
 double couldBeContBW, temp,temp1,temp2, curBW;
 int phaseChangeSamples, phaseChangeState;
 double stdDevThreshold, netBWGuardBand, containerChangeRatio, temp_stddev, reduceContBW=0.0f;
@@ -185,7 +185,7 @@ int resetWindow = 0, resetIters=0, iterCount=0, numContainers=0, i=0, violationF
 int numViolations=0, numChanges=0; 
 double accumFgBw = 0.0f, accumBgBw = 0.0f; int numSamples = 0.0; 
 
-int calculateNewWindow(struct vm_info* vm,ifstream& infile,ofstream& outfile){
+int calculateNewWindow(struct vm_info* vm,ifstream& infile,ofstream& simtracefile){
     long val1;
     vm->sum = 0, vm->sum2 = 0, vm->curBW = 0;
     //std::cout<<"\t Enter <calculateNewWindow> vm->sum "<<vm->sum<<" vm->sum2 "<<vm->sum2<<" vm->initWindowSize "<<vm->initWindowSize<<"\n";
@@ -195,14 +195,14 @@ int calculateNewWindow(struct vm_info* vm,ifstream& infile,ofstream& outfile){
             return 0;
         }
         // Just to make the trace value usable
-        double curBW = val1/(1024*1024);
+        double curBW = ((double)val1)/(1024*1024);
         curBW*=8;
         vm->sum += curBW;
         vm->sum2 += (curBW * curBW);
         vm->curBW = curBW;
         // vm->to_string();
         // printf("\n");
-        if(printTrace) outfile << "****"<< curBW << "," << vm->curContBW<<","<< guardUpperLimit<<","<<guardLowerLimit<< endl;
+        if(printTrace) simtracefile<< curBW << "," << vm->curContBW<<","<< guardUpperLimit<<","<<guardLowerLimit<< endl;
     }
     //std::cout<<"\t Exit <calculateNewWindow> vm->sum "<<vm->sum<<" vm->sum2 "<<vm->sum2<<" vm->initWindowSize "<<vm->initWindowSize<<"\n";
     return 1;
@@ -238,14 +238,9 @@ enum {
     phase_change_down
 } possible_phaseChangeVals;
 
-int main(int argc, char** argv)
-{
-    struct vm_info* vm = new vm_info;
+int main(int argc, char** argv){
 
-    // Initialise output file
-    ofstream outfile;
-    outfile.open("simresults.txt",ios::out); 
-    
+    struct vm_info* vm = new vm_info;    
     // TODO: Fetch original network bandwidth of VM - Hardcoding it to 944 Mbits/sec
     vm->original_limit = 945; // Units = Mbytes/sec (944/8) = 125
     vm->contMaxBW = 800;
@@ -266,11 +261,24 @@ int main(int argc, char** argv)
     vm->initWindowSize = 3*phaseChangeSamples;
     vm->window_size = phaseChangeSamples;
     // set container bw guard percentage 
-    netBWGuardBand = 0.1;//
+    netBWGuardBand = 0.25;//
     stdDevThreshold = stof(argv[2]);
     reduceContBW = stof(argv[3]);
     printTrace = stoi(argv[4]);
-    outfile << "Running tests for phase change of " << phaseChangeSamples << " and std dev of " << stdDevThreshold << endl;
+    char inFilename[128];
+    sprintf(inFilename,"%s",argv[5]);
+
+    // Initialise output file
+    ofstream simtracefile,summaryfile;
+    char out_filename[128],out_filename1[128];
+    sprintf(out_filename,"simtrace/%s_phCh%d_stdDev%.2f.txt",inFilename,phaseChangeSamples,stdDevThreshold);
+    sprintf(out_filename1,"summary/%s_phCh%d_stdDev%.2f.txt",inFilename,phaseChangeSamples,stdDevThreshold);
+    sprintf(inFilename,"%s.txt",inFilename);
+    printf("\t inFilename: %s phaseChangeSamples: %d stdDevThreshold: %.2f printTrace: %d out_filename: %s out_filename1: %s \n",inFilename,phaseChangeSamples,stdDevThreshold,printTrace,out_filename,out_filename1);
+    simtracefile.open(out_filename,ios::out); 
+    summaryfile.open(out_filename1,ios::out); 
+
+    //simtracefile << "Running tests for phase change of " << phaseChangeSamples << " and std dev of " << stdDevThreshold << endl;
     // printf("\t  numContainers: %d phaseChangeSamples: %d netBWGuardBand: %.3f stdDevThreshold: %.2f reduceContBW: %.2f \n", 
     //     numContainers, phaseChangeSamples, netBWGuardBand, stdDevThreshold, reduceContBW);
     
@@ -293,19 +301,16 @@ int main(int argc, char** argv)
 
     // Gathering initial data for the defined running window
     // TODO: Take this file as input
-    std::ifstream infile("trace_result_1_May12.txt");
+    std::ifstream infile(inFilename);
     long val1;
-    calculateNewWindow(vm,infile,outfile);
+    calculateNewWindow(vm,infile,simtracefile);
 
     vm->window_size = vm->initWindowSize;
     vm->mean = (vm->sum/vm->window_size);
     temp_stddev = ((vm->sum2/vm->window_size) - (vm->mean * vm->mean));
     vm->stdeviation = (temp_stddev > 0) ? sqrt(temp_stddev) : vm->stdeviation;  
 
-    if(printTrace) outfile << "X *** vm->sum "<<vm->sum<<" vm->sum2 "<<(vm->sum2)<<" vmCurBW "<< curBW 
-            <<" vm->mean "<<vm->mean<<" stdDevThreshold "<<stdDevThreshold<<" vm->stdeviation "<<vm->stdeviation
-            <<","<< guardUpperLimit<<","<<guardLowerLimit<<"****"<< endl;
-
+    //if(printTrace) summaryfile << "X *** vm->sum "<<vm->sum<<" vm->sum2 "<<(vm->sum2)<<" vmCurBW "<< curBW <<" vm->mean "<<vm->mean<<" stdDevThreshold "<<stdDevThreshold<<" vm->stdeviation "<<vm->stdeviation<<","<< guardUpperLimit<<","<<guardLowerLimit<<"****"<< endl;
     //exit(-1);
     // TODO: Handle case where stdev ~ 0
     //vm->vm_bwReserved = *std::max_element(vm->updata.begin(), vm->updata.end()) + (stdDevThreshold * vm->stdeviation);
@@ -319,14 +324,14 @@ int main(int argc, char** argv)
             break;
         }
         // Just to make the trace value usable
-        double curBW = val1/(1024*1024);
+        double curBW = ((double)val1)/(1024*1024);
         curBW*=8;
         vm->curBW = curBW;
         vm->sum += curBW; 
         vm->sum2 += (curBW * curBW); 
         vm->window_size++;
 
-// BEGIN should-move-after-resetIters-loop
+        // BEGIN should-move-after-resetIters-loop
         // Calculate mean and standard deviation for the window period
         vm->mean = (vm->sum/vm->window_size);
         temp_stddev = ((vm->sum2/vm->window_size) - (vm->mean * vm->mean));
@@ -335,10 +340,10 @@ int main(int argc, char** argv)
         accumFgBw+=curBW;
         accumBgBw+=(vm->curContBW);
 
-        if(printTrace==2) outfile << "0 *** numSamples "<<numSamples<<" vm->sum "<<vm->sum <<" vm->sum2 "<<vm->sum2<<" vmCurBW "<< curBW 
+        if(printTrace==2) summaryfile << "0 *** numSamples "<<numSamples<<" vm->sum "<<vm->sum <<" vm->sum2 "<<vm->sum2<<" vmCurBW "<< curBW 
             <<" vm->mean "<<vm->mean<<" stdDevThreshold "<<stdDevThreshold<<" vm->stdeviation "<<vm->stdeviation
             <<","<< guardUpperLimit<<","<<guardLowerLimit<<"****"<< endl;
-// END should-move-after-resetIters-loop
+        // END should-move-after-resetIters-loop
         resetIters++;
         if((resetWindow) && (resetIters < phaseChangeSamples)){
             //printf("**iterCount: %d resetIters: %d vmCurBW: %f vm_bwReserved: %.2f upper: %f lower: %f couldBeContBW: %.3f mean: %.2f std_dev: %.2f \n",iterCount,resetIters,vm->curBW,vm->vm_bwReserved,guardUpperLimit,guardLowerLimit,couldBeContBW,vm->mean,vm->stdeviation);
@@ -363,7 +368,7 @@ int main(int argc, char** argv)
         guardUpperLimit = temp1 > vm->original_limit ? vm->original_limit : temp1;
         temp2 = (vm->mean - (stdDevThreshold * vm->stdeviation));
         guardLowerLimit = temp2 < 0 ? vm->contMinBW : temp2;
-        if(printTrace==2) outfile << "1 *** numSamples "<<numSamples<<"temp1 "<<temp1<<" temp2 "<<temp2<<" vmCurBW "<< curBW 
+        if(printTrace==2) summaryfile << "1 *** numSamples "<<numSamples<<"temp1 "<<temp1<<" temp2 "<<temp2<<" vmCurBW "<< curBW 
             <<" vm->mean "<<vm->mean<<" stdDevThreshold "<<stdDevThreshold<<" vm->stdeviation "<<vm->stdeviation
             <<","<< guardUpperLimit<<","<<guardLowerLimit<<"****"<< endl;
         vm->vm_bwReserved = vm->mean + (stdDevThreshold * vm->stdeviation);
@@ -398,7 +403,7 @@ int main(int argc, char** argv)
         //     iterCount,vm->curBW,vm->vm_bwReserved,guardUpperLimit,
         //     guardLowerLimit,vm->mean,vm->stdeviation,couldBeContBW,
         //     vm->curContBW,vm->updata.size(),vm->downdata.size());        
-        if(printTrace) outfile << ""<< curBW << "," << vm->curContBW<<","<< guardUpperLimit<<","<<guardLowerLimit<< endl;
+        if(printTrace) simtracefile << ""<< curBW << "," << vm->curContBW<<","<< guardUpperLimit<<","<<guardLowerLimit<< endl;
         // On a phase change, only the anomalies are considered for mean & std deviation
         if(vm->updata.size() >= phaseChangeSamples){
             pair<double,double> p = getSumnSumSq(vm->updata);
@@ -415,7 +420,7 @@ int main(int argc, char** argv)
             */
             violationFlag = 1;
             couldBeContBW = vm->contMinBW;
-            if(printTrace==2) outfile << "*** vm->updata.size() "<< vm->updata.size()<<" curBW "<< curBW<< " curContBW "<< vm->curContBW<<" UL "<< guardUpperLimit<<" LL "<<guardLowerLimit<<"****"<< endl;
+            if(printTrace==2) summaryfile << "*** vm->updata.size() "<< vm->updata.size()<<" curBW "<< curBW<< " curContBW "<< vm->curContBW<<" UL "<< guardUpperLimit<<" LL "<<guardLowerLimit<<"****"<< endl;
         }
         else if(vm->downdata.size() >= phaseChangeSamples){
             pair<double,double> p = getSumnSumSq(vm->downdata);
@@ -436,35 +441,15 @@ int main(int argc, char** argv)
         }
 
         //std::this_thread::sleep_for (std::chrono::seconds(1));
-
-        // Phase change ends..
-        //couldBeContBW =  vm->original_limit - ((1+netBWGuardBand) * vm->vm_bwReserved); 
-        /*if(couldBeContBW < vm->contMinBW) couldBeContBW = vm->contMinBW; // dont drop below the minimum limit
-        if(couldBeContBW > vm->contMaxBW) couldBeContBW = vm->contMaxBW; // max limit of bw for container
-        //if( ((vm->curContBW/couldBeContBW)>(1-containerChangeRatio)) && ((vm->curContBW/couldBeContBW)<(1+containerChangeRatio)) ) continue;
-        
-        // cout << "Current Container limit: " << vm->curContBW << " Could be container limit: " << couldBeContBW << endl;
-        if( vm->curContBW < couldBeContBW ) {      
-            vm->curContBW = couldBeContBW;  
-            // cout <<  "Increasing container BW limit to: " << couldBeContBW << endl;
-            numChanges += 1;
-            vm->downdata.clear();vm->updata.clear();
-        }else if(vm->curContBW > couldBeContBW){
-            //couldBeContBW = vm->origContainerBW;
-            double reduceBWto = reduceContBW*couldBeContBW;
-            couldBeContBW = (reduceBWto < vm->contMinBW) ? vm->contMinBW : reduceBWto;
-
-            vm->curContBW = couldBeContBW;  
-            numChanges += 1;
-            vm->downdata.clear();vm->updata.clear();
-        } */
         updateLimits(vm,0);
 
         if(violationFlag==1){
 
-            if(calculateNewWindow(vm,infile,outfile)==0){
-                outfile << "Violations: " << numViolations << " Phase Changes: " << numChanges << endl;
-                return 0;
+            if(calculateNewWindow(vm,infile,simtracefile)==0){
+                //simtracefile << "Violations: " << numViolations << " Phase Changes: " << numChanges << endl;
+
+                break;
+                //return 0;
 
             }
             vm->window_size = vm->initWindowSize;
@@ -478,18 +463,27 @@ int main(int argc, char** argv)
             accumFgBw+=(vm->curContBW * vm->initWindowSize);
             numSamples+=(vm->initWindowSize);
             violationFlag = 0;
-            if(printTrace==2) outfile << "*** vm->mean "<< vm->mean<<" vm->stdeviation "<<vm->stdeviation<<" vm->window_size "<< vm->window_size<< " vm->sum "<<vm->sum<<" vm->sum2 "<<vm->sum2<<"****"<< endl;
+            if(printTrace==2) summaryfile << "*** vm->mean "<< vm->mean<<" vm->stdeviation "<<vm->stdeviation<<" vm->window_size "<< vm->window_size<< " vm->sum "<<vm->sum<<" vm->sum2 "<<vm->sum2<<"****"<< endl;
             updateLimits(vm,1);
         }
         //if(numSamples%2000==0) std::cout<<"\t numSamples "<<numSamples<<" fgBW "<<(accumFgBw/numSamples)<<" bgBW "<<(accumBgBw/numSamples)<<"\n";
     }
 
-    if(numSamples!=0) outfile << "Violations:\t" << numViolations << "\nPhase Changes:\t" << numChanges<<"\nFGBW:\t"
-                              <<(accumFgBw/numSamples)<<"\nBGBW:\t"<<(accumBgBw/numSamples)<<"\nnumSamples:\t"<<(numSamples)<< endl;
+    std::cout<<"\t numSamples: "<<numSamples<<"\n";
+    if(numSamples!=0) 
+        std::cout << "Violations:\t" << numViolations << "\nPhaseChanges:\t" << numChanges<<"\nFGBW:\t"<<(accumFgBw/numSamples)<<"\nBGBW:\t"<<(accumBgBw/numSamples)<<"\nnumSamples:\t"<<(numSamples)<< endl;
     else
-    outfile << "Violations:\t" << numViolations << "\nPhase Changes:\t" << numChanges<<"\nnumSamples:\t"<<(numSamples)<< endl;
+        std::cout << "Violations:\t" << numViolations << "\nPhaseChanges:\t" << numChanges<<"\nnumSamples:\t"<<(numSamples)<< endl;
 
-    outfile.close();
+    if(numSamples!=0) 
+        summaryfile << "Violations:\t" << numViolations << "\nPhaseChanges:\t" << numChanges<<"\nFGBW:\t"<<(accumFgBw/numSamples)<<"\nBGBW:\t"<<(accumBgBw/numSamples)<<"\nnumSamples:\t"<<(numSamples)<< endl;
+    else
+        summaryfile << "Violations:\t" << numViolations << "\nPhaseChanges:\t" << numChanges<<"\nnumSamples:\t"<<(numSamples)<< endl;
+
+
+    
+    simtracefile.close();
+    summaryfile.close();
     return 0;
 
 }
