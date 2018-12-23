@@ -273,7 +273,7 @@ int main(int argc, char** argv){
     char out_filename[128],out_filename1[128];
     sprintf(out_filename,"simtrace/%s_phCh%d_stdDev%.2f.txt",inFilename,phaseChangeSamples,stdDevThreshold);
     sprintf(out_filename1,"summary/%s_phCh%d_stdDev%.2f.txt",inFilename,phaseChangeSamples,stdDevThreshold);
-    sprintf(inFilename,"%s.txt",inFilename);
+    sprintf(inFilename,"processed_traces/%s.txt",argv[5]);
     printf("\t inFilename: %s phaseChangeSamples: %d stdDevThreshold: %.2f printTrace: %d out_filename: %s out_filename1: %s \n",inFilename,phaseChangeSamples,stdDevThreshold,printTrace,out_filename,out_filename1);
     simtracefile.open(out_filename,ios::out); 
     summaryfile.open(out_filename1,ios::out); 
@@ -311,8 +311,6 @@ int main(int argc, char** argv){
     vm->stdeviation = (temp_stddev > 0) ? sqrt(temp_stddev) : vm->stdeviation;  
 
     //if(printTrace) summaryfile << "X *** vm->sum "<<vm->sum<<" vm->sum2 "<<(vm->sum2)<<" vmCurBW "<< curBW <<" vm->mean "<<vm->mean<<" stdDevThreshold "<<stdDevThreshold<<" vm->stdeviation "<<vm->stdeviation<<","<< guardUpperLimit<<","<<guardLowerLimit<<"****"<< endl;
-    //exit(-1);
-    // TODO: Handle case where stdev ~ 0
     //vm->vm_bwReserved = *std::max_element(vm->updata.begin(), vm->updata.end()) + (stdDevThreshold * vm->stdeviation);
 
     while(1){
