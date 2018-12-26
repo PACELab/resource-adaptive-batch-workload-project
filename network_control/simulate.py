@@ -114,8 +114,8 @@ for curParam in plotParams:
     maxSofar = 0.0
     for curPhaseChWindow in phaseChangeArr:
         curXaxis = []; curXaxisLabels = [] ; curYaxis = []; idx = 0
-        for curStdDev in stdDevThreshold:
-            for curTrace,curTraceStr in traces:
+        for curTrace,curTraceStr in traces:
+            for curStdDev in stdDevThreshold:
                 outPrefix = str(curTrace)+"\t"+str(curPhaseChWindow)+"\t"+str(curStdDev)
                 curXaxisLabels.append(curTraceStr+'_'+str('%.2f'%(curStdDev)))
                 curXaxis.append(idx); idx+=1;

@@ -179,7 +179,7 @@ bool fetchBandwidthVal(ifstream& infile, long *val)
 
 int printTrace = 0; double guardUpperLimit =0, guardLowerLimit=0;
 double couldBeContBW, temp,temp1,temp2, curBW;
-int phaseChangeSamples, phaseChangeState;
+int phaseChangeSamples, uPhaseChangeSamples,phaseChangeState;
 double stdDevThreshold, netBWGuardBand, containerChangeRatio, temp_stddev, reduceContBW=0.0f;
 int resetWindow = 0, resetIters=0, iterCount=0, numContainers=0, i=0, violationFlag = 0;
 int numViolations=0, numChanges=0; 
@@ -257,7 +257,9 @@ int main(int argc, char** argv){
     vm->origContainerBW = 10*8;// stod(argv[2]);
     // Number of samples required to re-calculate bands
     phaseChangeSamples = stoi(argv[1]);
+    uPhaseChangeSamples = (phaseChangeSamples>1) ? phaseChangeSamples : phaseChangeSamples;
     // Get the initial window size
+
     vm->initWindowSize = 3*phaseChangeSamples;
     vm->window_size = phaseChangeSamples;
     // set container bw guard percentage 
@@ -403,7 +405,7 @@ int main(int argc, char** argv){
         //     vm->curContBW,vm->updata.size(),vm->downdata.size());        
         if(printTrace) simtracefile << ""<< curBW << "," << vm->curContBW<<","<< guardUpperLimit<<","<<guardLowerLimit<< endl;
         // On a phase change, only the anomalies are considered for mean & std deviation
-        if(vm->updata.size() >= phaseChangeSamples){
+        if(vm->updata.size() >= uPhaseChangeSamples){
             pair<double,double> p = getSumnSumSq(vm->updata);
             //vm->mean = p.first; vm->stdeviation = p.second;            
             /*
