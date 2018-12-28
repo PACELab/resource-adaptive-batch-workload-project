@@ -140,19 +140,32 @@ float readAndComputAvg(vector<long int> pids,std::string itemName)
 }
 
 
-float getMeanIPC(int pidCount, string pidsString, vector<long int> pids)
+float getMeanIPC(int pidCount, string pidsString, vector<long int> pids, float intervalLength)
 {
     char command[1000]="sudo sh -c \"";
     strcat(command,scavenger_home);
     strcat(command,"/ipc_scripts/monitor_");
     strcat(command,to_string(pidCount).c_str());
-    strcat(command,"_pid.sh ");
+    strcat(command,"_pid_v2.sh ");
     strcat(command,pidsString.c_str());
+    strcat(command," ");
+    strcat(command,to_string(intervalLength).c_str());
     strcat(command,"\"");
+    //cout << command << endl; 
 
     std::string res = runCommand(command);
-
-    return readAndComputAvg(pids,"ipc");
+    if(res == "") return 0;
+    float retVal=0;
+    try
+    {
+        retVal=stof(res);
+    }
+    catch(...)
+    {
+        retVal=0;
+    }
+    return retVal;
+    //return readAndComputAvg(pids,"ipc");
 }
 
 
@@ -297,12 +310,12 @@ int main(int argc,char** argv)
 
     if(argc<=9)
     {
-	cout <<"windowSize, cpuIncreaseValue, cpuQuotaDecreasingRate, minCpuQuota, maxCpuQuota, stdFactor, timeToRun, VM1, cpuQuotaFlag name  in order are needed"<<endl;
+	cout <<"Please provide windowSize, cpuIncreaseValue, cpuQuotaDecreasingRate, minCpuQuota, maxCpuQuota, stdFactor, timeToRun, VM name, cpuQuotaFlag, intervalLength (default: 1s) in second; in order"<<endl;
 	exit(0);     
     }
 
     int windowSize;
-    int cpuIncreaseValue;
+    float cpuIncreaseValue;
     float cpuQuotaDecreasingRate;
     int minCpuQuota;
     int maxCpuQuota;
@@ -310,10 +323,11 @@ int main(int argc,char** argv)
     int timeToRun;    
     std::string vmName; 
     int cpuQuotaFlag; 
+    float intervalLength=1; 
 
     try{
     	windowSize = stoi(argv[1]);
-    	cpuIncreaseValue=stoi(argv[2]);
+    	cpuIncreaseValue=stof(argv[2]);
     	cpuQuotaDecreasingRate=stof(argv[3]);
     	minCpuQuota=stoi(argv[4]);
     	maxCpuQuota=stoi(argv[5]);
@@ -321,6 +335,10 @@ int main(int argc,char** argv)
     	timeToRun = stoi(argv[7]);
 	vmName=argv[8];
 	cpuQuotaFlag=stoi(argv[9]);
+	if(argc==11)
+	{
+		intervalLength=stof(argv[10]);
+	}
     } 
     catch(...)
     {
@@ -328,8 +346,10 @@ int main(int argc,char** argv)
 	exit(0); 
     }
 
-	cout<<time_since_epoch()<<"-"<<"input_info:"<<windowSize<<","<<cpuIncreaseValue<<","<<cpuQuotaDecreasingRate<<","<<minCpuQuota<<","<<maxCpuQuota<<","<<stdFactor<<","<<timeToRun<<","<<vmName<<","<<cpuQuotaFlag<<endl; 
+	cout<<time_since_epoch()<<"-"<<"input_info:"<<windowSize<<","<<cpuIncreaseValue<<","<<cpuQuotaDecreasingRate<<","<<minCpuQuota<<","<<maxCpuQuota<<","<<stdFactor<<","<<timeToRun<<","<<vmName<<","<<cpuQuotaFlag<<","<<intervalLength<<endl; 
     
+    timeToRun=(int)(timeToRun/intervalLength); 
+
     vector<long int> pids=getPIDs(vmName);
     string pidsString;
     cout<<"pids:" <<pids.size()<<" ";
@@ -372,7 +392,7 @@ int main(int argc,char** argv)
     {
 	
 	//float ipc=getMeanIPC(pids);
-	float ipc=getMeanIPC(pids.size(),pidsString,pids);
+	float ipc=getMeanIPC(pids.size(),pidsString,pids,intervalLength);
 	//float llcMisses=getMeanLLCLoadMisses(pids);
 	//float cacheMisses=getMeanCacheMisses(pids);
 
@@ -407,7 +427,7 @@ int main(int argc,char** argv)
     {
 
 	//float ipc=getMeanIPC(pids); 
-	float ipc=getMeanIPC(pids.size(),pidsString,pids);
+	float ipc=getMeanIPC(pids.size(),pidsString,pids,intervalLength);
 	//float llcMisses=getMeanLLCLoadMisses(pids);
         //float cacheMisses=getMeanCacheMisses(pids);
 
@@ -432,7 +452,7 @@ int main(int argc,char** argv)
 		else if(ipc>=quotaIncreaingBound && ipc<=quotaIncreasingUpperBound)
 		{
 			//conInfo->cpuQuota = min((int)(conInfo->cpuQuota*cpuQuotaIncreasingRate),maxCpuQuota);
-			conInfo->cpuQuota = min((int)(conInfo->cpuQuota+cpuIncreaseValue),maxCpuQuota);
+			conInfo->cpuQuota = min((int)(conInfo->cpuQuota*cpuIncreaseValue),maxCpuQuota);
 			cout<<time_since_epoch()<<"-"<<"in_safe_area-quota_info: increasing quota to, " << conInfo->cpuQuota << endl;
 			setCpuQuotaForDocker(conInfo->cpuQuota);
  
