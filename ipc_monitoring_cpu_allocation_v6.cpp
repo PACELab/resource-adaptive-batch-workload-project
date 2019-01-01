@@ -35,12 +35,12 @@ struct container
 struct vm_info
 {
 
-    float currentIPC;
-    float mean;
-    float stdeviation;
-    float sum; 
-    float sum2;
-    vector<float> window; 
+    double currentIPC;
+    double mean;
+    double stdeviation;
+    double sum; 
+    double sum2;
+    vector<double> window; 
     int windowSize; 
 };
 
@@ -59,18 +59,18 @@ std::string runCommand(const char *s)
 
 }
 
-pair<float,float> findMeanAndSTD(std::vector<float>& a)
+pair<double,double> findMeanAndSTD(std::vector<double>& a)
 {
     if(a.size() == 0)
         return make_pair(0.0,0.0);
-    float sum = 0;
-    float sq_sum = 0;
+    double sum = 0;
+    double sq_sum = 0;
     for(int i = 0; i < a.size(); ++i) {
        sum += a[i];
        sq_sum += a[i] * a[i];
     }
-    float mean = sum / a.size();
-    float variance = (sq_sum / a.size()) - (mean * mean);
+    double mean = sum / a.size();
+    double variance = (sq_sum / a.size()) - (mean * mean);
     return make_pair(mean,sqrt(variance));
 }
 
@@ -90,7 +90,7 @@ void monitorIPC(long int pid, bool shallWait)
 }
 
 
-float readLastData(long int pid, std::string itemName)
+double readLastData(long int pid, std::string itemName)
 {
     char command[1000]="";
     strcat(command,scavenger_home);
@@ -100,7 +100,7 @@ float readLastData(long int pid, std::string itemName)
     strcat(command,to_string(pid).c_str());
     std::string res = runCommand(command);
     if(res == "") return 0;
-    float retVal=0;
+    double retVal=0;
     try
     {
         retVal=stof(res);
@@ -113,15 +113,15 @@ float readLastData(long int pid, std::string itemName)
     return retVal;
 }
 
-float readAndComputAvg(vector<long int> pids,std::string itemName)
+double readAndComputAvg(vector<long int> pids,std::string itemName)
 {
     int nonZeroCount=0;
-    float nonZeroSum=0.0;
+    double nonZeroSum=0.0;
 
     //cout<<itemName<<": ";
     for(int i=0;i<pids.size();i++)
     {
-        float item=readLastData(pids[i],itemName);
+        double item=readLastData(pids[i],itemName);
         if(item!=0)
         {
               
@@ -140,7 +140,7 @@ float readAndComputAvg(vector<long int> pids,std::string itemName)
 }
 
 
-float getMeanIPC(int pidCount, string pidsString, vector<long int> pids, float intervalLength)
+double getMeanIPC(int pidCount, string pidsString, vector<long int> pids, double intervalLength)
 {
     char command[1000]="sudo sh -c \"";
     strcat(command,scavenger_home);
@@ -155,7 +155,7 @@ float getMeanIPC(int pidCount, string pidsString, vector<long int> pids, float i
 
     std::string res = runCommand(command);
     if(res == "") return 0;
-    float retVal=0;
+    double retVal=0;
     try
     {
         retVal=stof(res);
@@ -170,7 +170,7 @@ float getMeanIPC(int pidCount, string pidsString, vector<long int> pids, float i
 
 
 
-float getMeanIPC(vector<long int> pids)
+double getMeanIPC(vector<long int> pids)
 { 
     int len=pids.size();
     if(len==0)
@@ -184,11 +184,11 @@ float getMeanIPC(vector<long int> pids)
 }
 
 
-float getMeanLLCLoadMisses(vector<long int> pids)
+double getMeanLLCLoadMisses(vector<long int> pids)
 {
 	return readAndComputAvg(pids,"llc_load_misses");
 }
-float getMeanCacheMisses(vector<long int> pids)
+double getMeanCacheMisses(vector<long int> pids)
 {
 	return readAndComputAvg(pids,"cache_misses");
 }
@@ -279,9 +279,9 @@ void setCpuQuotaForDocker(int cpuQuota, int cpuQuotaFlag)
 }
 
 
-void computeMainMetrics(float mean, float std, float stdFactor, float &phaseChangeBound, float &quotaIncreaingBound, float &quotaIncreasingUpperBound, float &stableBound, float &lowerBound)
+void computeMainMetrics(double mean, double std, double stdFactor, double &phaseChangeBound, double &quotaIncreaingBound, double &quotaIncreasingUpperBound, double &stableBound, double &lowerBound)
 {
-    float stdFactorized=stdFactor*std; 
+    double stdFactorized=stdFactor*std; 
     
     phaseChangeBound=mean + (2*stdFactorized);
     quotaIncreasingUpperBound=mean + stdFactorized; 
@@ -337,14 +337,14 @@ int main(int argc,char** argv)
     }
 
     int windowSize;
-    float quotaChaneFactor; 
+    double quotaChaneFactor; 
     int minCpuQuota;
     int maxCpuQuota;
-    float stdFactor;
+    double stdFactor;
     int timeToRun;    
     std::string vmName; 
     int cpuQuotaFlag; 
-    float intervalLength=1; 
+    double intervalLength=1; 
 
     try{
     	windowSize = stoi(argv[1]);
@@ -369,8 +369,8 @@ int main(int argc,char** argv)
 	cout<<time_since_epoch()<<"-"<<"input_info:"<<windowSize<<","<<quotaChaneFactor<<","<<minCpuQuota<<","<<maxCpuQuota<<","<<stdFactor<<","<<timeToRun<<","<<vmName<<","<<cpuQuotaFlag<<","<<intervalLength<<endl; 
     
     timeToRun=(int)(timeToRun/intervalLength); 
-    float cpuQuotaIncreaseRate=1+(quotaChaneFactor/100);
-    float cpuQuotaDecreasingRate=0.5; 
+    double cpuQuotaIncreaseRate=1+(quotaChaneFactor/100);
+    double cpuQuotaDecreasingRate=0.5; 
 
     cout<<time_since_epoch()<<"-"<<"action_info:"<<cpuQuotaIncreaseRate<< " " << cpuQuotaDecreasingRate << endl; 
  
@@ -385,11 +385,11 @@ int main(int argc,char** argv)
     }
     cout<<endl; 
 
-    float phaseChangeBound=0;
-    float quotaIncreaingBound=0;
-    float stableBound=0;
-    float lowerBound=0;
-    float quotaIncreasingUpperBound=0;
+    double phaseChangeBound=0;
+    double quotaIncreaingBound=0;
+    double stableBound=0;
+    double lowerBound=0;
+    double quotaIncreasingUpperBound=0;
     bool reFillMovingWindows=false;
     
     
@@ -415,10 +415,10 @@ int main(int argc,char** argv)
     for (int i=0;i<windowSize;i++)
     {
 	
-	//float ipc=getMeanIPC(pids);
-	float ipc=getMeanIPC(pids.size(),pidsString,pids,intervalLength);
-	//float llcMisses=getMeanLLCLoadMisses(pids);
-	//float cacheMisses=getMeanCacheMisses(pids);
+	//double ipc=getMeanIPC(pids);
+	double ipc=getMeanIPC(pids.size(),pidsString,pids,intervalLength);
+	//double llcMisses=getMeanLLCLoadMisses(pids);
+	//double cacheMisses=getMeanCacheMisses(pids);
 	if(ipc!=0)
 	{
 		vmInfo->window.push_back(ipc);
@@ -457,8 +457,8 @@ int main(int argc,char** argv)
      while(1)
     {
 
-	//float ipc=getMeanIPC(pids); 
-	float ipc=getMeanIPC(pids.size(),pidsString,pids,intervalLength);
+	//double ipc=getMeanIPC(pids); 
+	double ipc=getMeanIPC(pids.size(),pidsString,pids,intervalLength);
 
 	if(ipc!=0)
 	{
@@ -518,7 +518,11 @@ int main(int argc,char** argv)
                 	vmInfo->sum2 += (ipc*ipc);
 			int wSize=vmInfo->window.size();
                		vmInfo->mean = (vmInfo->sum / wSize);
-               		vmInfo->stdeviation= sqrt((vmInfo->sum2/wSize)-(vmInfo->mean*vmInfo->mean));
+               		double variance=(vmInfo->sum2/wSize)-(vmInfo->mean*vmInfo->mean); 
+			if(variance>0)			
+				vmInfo->stdeviation = sqrt(variance);
+			else
+				vmInfo->stdeviation = 0;
 			if(wSize>=vmInfo->windowSize)
 			{	
 				reFillMovingWindows=false;
