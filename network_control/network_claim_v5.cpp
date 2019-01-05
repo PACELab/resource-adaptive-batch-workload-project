@@ -45,42 +45,10 @@ struct vm_info{
     double  original_limit;
     int window_size;
 
-    vm_info()
-    {
+    vm_info(){
         currentBW=sum=sum2=original_limit=window_size=fgReserved=0;
 
     }
-
-    // void to_string()
-    // {
-    //    // printf("\033c");
-    //     printf("original_limit : %f \n",original_limit);
-    //     printf("currentBW : %f \n",currentBW);
-    //     printf("fgReserved : %f \n",fgReserved);
-    //     printf("mean : %f \n",mean);
-    //     printf("std : %f \n",stdeviation);
-    //     printf("sum : %f \n",sum);
-    //     printf("sum2 : %f \n",sum2);
-    //     printf("window_size : %d \n",window_size);
-    //     if(updata.size()>0)
-    //     {
-    //         printf("updata : ");
-    //         for(int i=0;i<updata.size();i++) printf("%f ",updata[i]);
-    //         printf("\n");
-    //     }
-    //     else
-    //         printf("updata : <empty>\n");
-    //     if(downdata.size()>0)
-    //     {
-    //         printf("downdata : ");
-    //         for(int i=0;i<downdata.size();i++) printf("%f ",downdata[i]);
-    //         printf("\n");
-    //     }
-    //     else
-    //         printf("downdata : <empty>\n");
-
-
-    // }
 };
 
 string runCommand(const char *s){
@@ -97,24 +65,6 @@ string runCommand(const char *s){
 
 }
 
-// void printVMData(struct vm_info* vm,int vm_count)
-// {
-//     for(int i=0;i<vm_count;i++)
-//     {
-//         cout<<"vm_name: "<<vm[i].name<<endl;
-//         cout<<"vm_mem_reserved: "<<vm[i].memoryReserved<<endl;
-//     }
-
-// }
-
-// void updateRunningWindow(struct vm_info* vm)
-// {
-//     for(int i=0;i<PHASE_CHANGE_SIZE;i++) vm->window[i]=vm->window[10 - PHASE_CHANGE_SIZE +i];
-//     for(int i=PHASE_CHANGE_SIZE;i<10;i++) vm->window[i]=0;
-//     vm->activeWindowSize=PHASE_CHANGE_SIZE;
-
-// }
-
 //code ref: https://www.strchr.com/standard_deviation_in_one_pass
 pair< pair<double,double>,pair<double,double> > findMeanAndSTD(std::vector<double>& a,std::deque<double>& b){
     if(a.size() == 0)
@@ -130,28 +80,6 @@ pair< pair<double,double>,pair<double,double> > findMeanAndSTD(std::vector<doubl
     double variance = (sq_sum / a.size()) - (mean * mean);
     return make_pair(make_pair(sum,sq_sum),make_pair(mean,sqrt(variance)));
 }
-
-// void add(struct vm_info* vm)
-// {
-//     if(vm->activeWindowSize==10)
-//     {
-//         for(int i=1;i<10;i++) vm->window[i-1]=vm->window[i];
-//         vm->window[9]=vm->currentBW/1024;
-//     }
-//     else
-//     {
-//         vm->window[vm->activeWindowSize]=vm->currentBW/1024;
-//         vm->activeWindowSize++;
-//     }
-// }
-
-// void printWindow(struct vm_info* vm)
-// {
-//     for(int i=0;i<vm->activeWindowSize;i++)
-//     {
-//         cout<<vm->window[i]<<" ";
-//     }
-// }
 
 void updateBgBW(string container_name, string interface, int rate, int burst, int latency){
     // Whenever actual value of bandwidth reserved changes, update the container
@@ -197,6 +125,21 @@ double getFgBW(){
     return curr_net_sum; // returns the sum of received & transmitted bits by all running VMs in MegaBits/sec
 }
 
+void initWindow(struct vm_info *vm,struct container *con ){
+    //gathering initial data for the defined running window
+    vm->sum = 0; vm->sum2 = 0;vm->windowData.clear();
+    for(int i=0;i<vm->window_size;i++){
+        double currentBW = getFgBW();
+        vm->sum+=currentBW;
+        vm->sum2+=currentBW*currentBW;
+        vm->currentBW = currentBW;
+        vm->windowData.push_back(currentBW);
+        //vm->to_string();
+        cout<<vm->currentBW<<","<<0<<","<<0<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<0<<","<<0<<endl;
+        std::this_thread::sleep_for (std::chrono::seconds(1));
+    }
+}
+
 int main(int argc,char** argv){
     struct vm_info *vm = new vm_info;
     struct container *con = new container;
@@ -209,8 +152,6 @@ int main(int argc,char** argv){
     double reclaim_pct = 0.05;//stod(argv[5]);
     double fg_reserved_pct = 0.95;//stod(argv[7]);
 
-    //double num_of_sockets=vm->original_limit = stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'");
-
     //get the initial window size
     vm->window_size = stoi(argv[2]);
 
@@ -222,6 +163,7 @@ int main(int argc,char** argv){
     double GUARD_STEP_SIZE = stof(argv[4]);
     //todo-1
     vm->original_limit = 1000;// Mbps;//stod(runCommand("cat /proc/meminfo | grep MemTotal | awk '{print $2}'"))/1048576;
+    double minPeakBelow = 40.0;
     //subtract container mmemory from the total allocated memory
     int contOrigLimit = stod(argv[1]);
     vm->original_limit -= contOrigLimit;   // argv[1] == <container_min_bw_in_mbps>
@@ -233,7 +175,7 @@ int main(int argc,char** argv){
     con->bgReserved = con->bgReserved - con->bgunused;
 
     //gathering initial data for the defined running window
-    for(int i=0;i<vm->window_size;i++){
+    /*for(int i=0;i<vm->window_size;i++){
         double currentBW = getFgBW();
         vm->sum+=currentBW;
         vm->sum2+=currentBW*currentBW;
@@ -242,12 +184,15 @@ int main(int argc,char** argv){
         //vm->to_string();
         cout<<vm->currentBW<<","<<0<<","<<0<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<0<<","<<0<<endl;
         std::this_thread::sleep_for (std::chrono::seconds(1));
-
-    }
+    }*/
+    int updateContBW = 0;
+    contOrigLimit = (contOrigLimit<100) ? contOrigLimit : 100;
+    updateBgBW("bay12-cont1","br0",contOrigLimit,BURST,LATENCY);
+    initWindow(vm,con);
 
     double minguardBW = reclaim_pct*vm->original_limit;
 
-    double violations,phasechanges;
+    double violations,phasechanges,quotient;
     violations=phasechanges=0;
 
     vm->mean = vm->sum/(double)vm->windowData.size();
@@ -257,7 +202,7 @@ int main(int argc,char** argv){
     //double predictedPeakabove = vm->mean+guardBW;
     double predictedPeakbelow = vm->mean-guardBW;
 
-    cout<<"\t vm->mean "<<vm->mean<<" guardBW "<<guardBW<<" minguardBW "<<minguardBW<<" GUARD_STEP_SIZE*vm->stdeviation "<<(GUARD_STEP_SIZE*vm->stdeviation)<<"\n";
+    cout<<"\t vm->mean "<<vm->mean<<" guardBW "<<guardBW<<" minguardBW "<<minguardBW<<" vm->stdeviation "<<(vm->stdeviation)<<"\n";
     vm->fgReserved = vm->mean+guardBW;
     con->bgReserved = (vm->original_limit - vm->fgReserved);
     con->bgunused = fmod(con->bgReserved,container_reclaim_size);
@@ -266,7 +211,16 @@ int main(int argc,char** argv){
     cout<<"\t fgReserved "<<vm->fgReserved<<"\n";
     cout<<"\t con->bgunused "<<con->bgunused<<"\n";
     cout<<"\t con->bgReserved "<<con->bgReserved<<"\n";
-    int updateContBW = 0;
+    
+    if(con->bgReserved!=contOrigLimit){
+        double toSetLimit = ((con->bgReserved<contOrigLimit) || (con->bgReserved<0) )? contOrigLimit : con->bgReserved;
+        toSetLimit = (toSetLimit<800) ? toSetLimit : 800; 
+        cout<<"\t toSetLimit "<<toSetLimit<<" contOrigLimit "<<contOrigLimit<<" con->bgReserved "<<con->bgReserved<<"\n";
+            //updateBgBW(string container_name, string interface, int rate, int burst, int latency);
+        updateBgBW("bay12-cont1","br0",toSetLimit,BURST,LATENCY);
+        con->bgReserved = toSetLimit;
+    }
+
     //int timeAfterViolation=-1;     
     while(1){
 
@@ -286,38 +240,21 @@ int main(int argc,char** argv){
             vm->sum2 -= vm->windowData[0]*vm->windowData[0];
             vm->windowData.pop_front();
         }
-    /*
-        if(vm->stdeviation<0.5)
-        {
-            guardBW = (minguardBW > GUARD_STEP_SIZE*vm->stdeviation)?minguardBW:GUARD_STEP_SIZE*vm->stdeviation;
-            predictedPeakabove = vm->mean+guardBW;
-            predictedPeakbelow = vm->mean-guardBW;
-        }*/
-
-        //cout<<vm->windowData.size()<<endl;
-    /*
-    if(timeAfterViolation>0) 
-        {
-           timeAfterViolation=timeAfterViolation-1;
-    }          
-        if(timeAfterViolation==0)
-    {
-                predictedPeakbelow = vm->mean-guardBW; 
-                timeAfterViolation=-1;
-        }
-    */
 
         if(currentBW >= fg_reserved_pct*(vm->fgReserved)){
             currentBW-=con->bgunused;
             con->bgunused=0;
         }
 
-        if(currentBW < predictedPeakbelow){
+        quotient = (predictedPeakbelow>0) ? (currentBW/predictedPeakbelow) : currentBW;
+        if(quotient<1){
+            //cout<<"\t currentBW "<<currentBW<<"\t predictedPeakbelow "<<predictedPeakbelow<<" currentBW < predictedPeakbelow "<<(currentBW < predictedPeakbelow)<<" qut "<<qut<<"\n";
             vm->downdata.push_back(currentBW);
         }
         else{
             vm->downdata.clear();
         }
+
         updateContBW = 0;
         if(currentBW >= fg_reserved_pct*(vm->fgReserved)){
 
@@ -327,8 +264,11 @@ int main(int argc,char** argv){
             con->bgReserved = (vm->original_limit - vm->fgReserved);
             con->bgunused = fmod(con->bgReserved,container_reclaim_size);
             con->bgReserved = con->bgReserved - con->bgunused;
+
+            con->bgReserved = contOrigLimit;
             violations+=1;//timeAfterViolation=vm->window_size;
-            updateContBW = 1;
+            cout<<" 1. currentBW "<<currentBW<<" predictedPeakbelow "<<predictedPeakbelow<<"vm->original_limit "<<vm->original_limit <<" vm->fgReserved "<<(vm->fgReserved)<<"\t con->bgReserved "<<(con->bgReserved)<<" con->bgunused "<<(con->bgunused)<<"\n";
+            updateContBW = 2;
         }
 
         if(vm->downdata.size()>=PHASE_CHANGE_SIZE){
@@ -350,20 +290,61 @@ int main(int argc,char** argv){
             con->bgReserved = (vm->original_limit - vm->fgReserved);
             con->bgunused = fmod(con->bgReserved,container_reclaim_size);
             con->bgReserved = con->bgReserved - con->bgunused;
-            cout<<"vm->original_limit "<<vm->original_limit <<" vm->fgReserved "<<(vm->fgReserved)<<"\t con->bgReserved "<<(con->bgReserved)<<" con->bgunused "<<(con->bgunused)<<"\n";
+            cout<<" 2. currentBW "<<currentBW<<" predictedPeakbelow "<<predictedPeakbelow<<"vm->original_limit "<<vm->original_limit <<" vm->fgReserved "<<(vm->fgReserved)<<"\t con->bgReserved "<<(con->bgReserved)<<" con->bgunused "<<(con->bgunused)<<"\n";
             vm->downdata.clear(); 
             phasechanges+=1;
             updateContBW = 1;
-
         }
+
         if(updateContBW){
             double toSetLimit = ((con->bgReserved<contOrigLimit) || (con->bgReserved<0) )? contOrigLimit : con->bgReserved;
+            toSetLimit = (toSetLimit<800) ? toSetLimit : 800; 
             cout<<"\t toSetLimit "<<toSetLimit<<" contOrigLimit "<<contOrigLimit<<" con->bgReserved "<<con->bgReserved<<"\n";
             //updateBgBW(string container_name, string interface, int rate, int burst, int latency);
             updateBgBW("bay12-cont1","br0",toSetLimit,BURST,LATENCY);
+            //updateBgBW("bay12-cont1","br0",contOrigLimit,BURST,LATENCY);
             con->bgReserved = toSetLimit;
+            
+            if(updateContBW==2){
+                initWindow(vm,con); // now to set the values if necessary.
+                //
+                vm->mean = vm->sum/(double)vm->windowData.size();
+                vm->stdeviation = sqrt((vm->sum2 / (double)vm->windowData.size()) - (vm->mean * vm->mean));
+
+                guardBW = (minguardBW > GUARD_STEP_SIZE*vm->stdeviation)?minguardBW:GUARD_STEP_SIZE*vm->stdeviation;
+                //double predictedPeakabove = vm->mean+guardBW;
+                predictedPeakbelow = vm->mean-guardBW;
+                //
+                double guard=GUARD_STEP_SIZE*vm->stdeviation;
+                guardBW = (minguardBW > guard)?minguardBW:guard;
+                vm->fgReserved  = vm->mean+guardBW;
+                predictedPeakbelow = vm->mean-guardBW;
+                //vm->fgReserved = *std::max_element(vm->downdata.begin(),vm->downdata.end())+guardBW;
+                con->bgReserved = (vm->original_limit - vm->fgReserved);
+                con->bgunused = fmod(con->bgReserved,container_reclaim_size);
+                con->bgReserved = con->bgReserved - con->bgunused;
+
+                cout<<"\t vm->mean "<<vm->mean<<" guardBW "<<guardBW<<" minguardBW "<<minguardBW<<" vm->stdeviation "<<(vm->stdeviation)<<"\n";
+                cout<<"\t fgReserved "<<vm->fgReserved<<"\n";
+                cout<<"\t con->bgunused "<<con->bgunused<<"\n";
+                cout<<"\t con->bgReserved "<<con->bgReserved<<"\n";
+                cout<<"\t predictedPeakbelow "<<(predictedPeakbelow)<<"\n";
+
+                cout<<"vm->original_limit "<<vm->original_limit <<" vm->fgReserved "<<(vm->fgReserved)<<"\t con->bgReserved "<<(con->bgReserved)<<" con->bgunused "<<(con->bgunused)<<"\n";
+                vm->downdata.clear(); 
+
+                toSetLimit = ((con->bgReserved<contOrigLimit) || (con->bgReserved<0) )? contOrigLimit : con->bgReserved;
+                toSetLimit = (toSetLimit<800) ? toSetLimit : 800; 
+                cout<<"\t toSetLimit "<<toSetLimit<<" contOrigLimit "<<contOrigLimit<<" con->bgReserved "<<con->bgReserved<<"\n";
+                //updateBgBW(string container_name, string interface, int rate, int burst, int latency);
+                updateBgBW("bay12-cont1","br0",toSetLimit,BURST,LATENCY);
+                con->bgReserved = toSetLimit;                        
+            }
         }
-        cout<<vm->currentBW<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<","<<vm->mean<<","<<vm->stdeviation<<","<<vm->downdata.size()<<endl;
+        predictedPeakbelow = (predictedPeakbelow<minPeakBelow) ? minPeakBelow : predictedPeakbelow; 
+        vm->fgReserved = (vm->fgReserved>1000) ? 1000 : vm->fgReserved;
+        vm->fgReserved = (vm->fgReserved<minPeakBelow) ? minPeakBelow : vm->fgReserved;
+        cout<<vm->currentBW<<","<<predictedPeakbelow<<","<<vm->fgReserved<<","<<con->bgReserved<<","<<con->bgunused<<","<<violations<<","<<phasechanges<<","<<vm->mean<<","<<vm->stdeviation<<","<<vm->downdata.size()<<","<<quotient<<endl;
         //std::this_thread::sleep_for (std::chrono::seconds(1));
 
     }
