@@ -478,7 +478,7 @@ int main(int argc,char** argv)
 			else if(ipc>=quotaIncreaingBound && ipc<=quotaIncreasingUpperBound)
 			{
 				//conInfo->cpuQuota = min((int)(conInfo->cpuQuota*cpuQuotaIncreasingRate),maxCpuQuota);
-				conInfo->cpuQuota = min((int)(conInfo->cpuQuota*cpuQuotaIncreaseRate),maxCpuQuota);
+				conInfo->cpuQuota = min((int)(conInfo->cpuQuota+quotaChaneFactor),maxCpuQuota);
 				cout<<time_since_epoch()<<"-"<<"in_safe_area-quota_info: increasing quota to, " << conInfo->cpuQuota << endl;
 				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag);
  
