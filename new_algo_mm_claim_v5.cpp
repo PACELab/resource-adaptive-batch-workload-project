@@ -353,7 +353,7 @@ int main(int argc,char** argv)
             vm->stdeviation = p.second.second;
             vm->sum = p.first.first;
             vm->sum2 = p.first.second;
-	    double guard=GUARD_STEP_SIZE*vm->stdeviation;
+	       double guard=GUARD_STEP_SIZE*vm->stdeviation;
 
             gaurdMem = (minGaurdMem > guard)?minGaurdMem:guard;
             vm->fgReserved  = vm->mean+gaurdMem;
