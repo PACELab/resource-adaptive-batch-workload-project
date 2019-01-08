@@ -154,6 +154,37 @@ double getMeanIPC(int pidCount, string pidsString, vector<long int> pids, double
     //cout << command << endl; 
 
     std::string res = runCommand(command);
+    //cout << res; 
+
+    double ipc=0; 
+    double sum=0;
+    int count=0; 
+    
+    std::istringstream outStream(res);
+    std::string token;
+    while(std::getline(outStream, token, ',')) {
+      if(token==""){
+	ipc=0;
+      }
+      try
+      {
+        ipc=stof(token);
+      }
+      catch(...)
+      {
+        ipc=0;
+      }
+      if(ipc>0)
+      {
+	sum+=ipc;
+	count++;
+      }
+    }
+    if(count>0)
+	return sum/count;
+    else
+	return 0; 
+    /*
     if(res == "") return 0;
     double retVal=0;
     try
@@ -166,6 +197,7 @@ double getMeanIPC(int pidCount, string pidsString, vector<long int> pids, double
     }
     return retVal;
     //return readAndComputAvg(pids,"ipc");
+   */
 }
 
 
@@ -262,7 +294,7 @@ vector<long int> getPIDs(std::string vmName)
 }
 
 
-void setCpuQuotaForDocker(int cpuQuota, int cpuQuotaFlag)
+void setCpuQuotaForDocker(int cpuQuota, int cpuQuotaFlag, std::string dockerID)
 {
 	if(cpuQuotaFlag!=0)
 	{
@@ -271,6 +303,8 @@ void setCpuQuotaForDocker(int cpuQuota, int cpuQuotaFlag)
 		strcat(command, "/set_cpu_quota_for_docker.sh ");
 		std::string quota = std::to_string(cpuQuota);
 		strcat(command,quota.c_str());
+		strcat(command," ");
+		strcat(command,dockerID.c_str());
 		strcat(command, "\"");
 		//cout << command << endl;
 		runCommand(command);
@@ -332,7 +366,7 @@ int main(int argc,char** argv)
 
     if(argc<9)
     {
-	cout <<"Please provide windowSize, quotaChaneFactor, minCpuQuota, maxCpuQuota, stdFactor, timeToRun, VM name, cpuQuotaFlag, intervalLength (default: 1s) in second; in order"<<endl;
+	cout <<"Please provide windowSize, quotaChaneFactor, minCpuQuota, maxCpuQuota, stdFactor, timeToRun, VM name, cpuQuotaFlag, intervalLength (default: 1s) in second; [docker id]  in order"<<endl;
 	exit(0);     
     }
 
@@ -345,6 +379,8 @@ int main(int argc,char** argv)
     std::string vmName; 
     int cpuQuotaFlag; 
     double intervalLength=1; 
+    
+    std::string dockerID="";
 
     try{
     	windowSize = stoi(argv[1]);
@@ -359,6 +395,10 @@ int main(int argc,char** argv)
 	{
 		intervalLength=stof(argv[9]);
 	}
+	if(argc==11)
+	{
+		dockerID=argv[10]; 
+	}
     } 
     catch(...)
     {
@@ -366,7 +406,7 @@ int main(int argc,char** argv)
 	exit(0); 
     }
 
-	cout<<time_since_epoch()<<"-"<<"input_info:"<<windowSize<<","<<quotaChaneFactor<<","<<minCpuQuota<<","<<maxCpuQuota<<","<<stdFactor<<","<<timeToRun<<","<<vmName<<","<<cpuQuotaFlag<<","<<intervalLength<<endl; 
+	cout<<time_since_epoch()<<"-"<<"input_info:"<<windowSize<<","<<quotaChaneFactor<<","<<minCpuQuota<<","<<maxCpuQuota<<","<<stdFactor<<","<<timeToRun<<","<<vmName<<","<<cpuQuotaFlag<<","<<intervalLength<<","<<dockerID<<endl; 
     
     timeToRun=(int)(timeToRun/intervalLength); 
     double cpuQuotaIncreaseRate=1+(quotaChaneFactor/100);
@@ -396,7 +436,7 @@ int main(int argc,char** argv)
     if(cpuQuotaFlag!=0)
     {
     	conInfo->cpuQuota = minCpuQuota;
-    	setCpuQuotaForDocker(conInfo->cpuQuota,1);
+    	setCpuQuotaForDocker(conInfo->cpuQuota,1,dockerID);
     	cout << time_since_epoch() <<"-"<<"setting CPU quota to min and sleep 10 seconds to make sure it got affected!" << endl; 
     	std::this_thread::sleep_for(std::chrono::milliseconds(10000));
     }
@@ -404,7 +444,7 @@ int main(int argc,char** argv)
     {
 	
 	conInfo->cpuQuota = maxCpuQuota;
-        setCpuQuotaForDocker(conInfo->cpuQuota,1);
+        setCpuQuotaForDocker(conInfo->cpuQuota,1,dockerID);
         cout << time_since_epoch() <<"-"<<"setting CPU quota to max and sleep 10 seconds to make sure it got affected!" << endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(10000));
     }
@@ -471,7 +511,7 @@ int main(int argc,char** argv)
 			{
 				conInfo->cpuQuota = minCpuQuota;
                 		cout<<time_since_epoch()<<"-"<<"passing_uperbound-quota_info: deacresing quota to " << conInfo->cpuQuota << endl;
-				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag);
+				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag,dockerID);
 				reFillMovingWindows=true;
 				resetVmInfo(vmInfo); 
 			}
@@ -480,20 +520,20 @@ int main(int argc,char** argv)
 				//conInfo->cpuQuota = min((int)(conInfo->cpuQuota*cpuQuotaIncreasingRate),maxCpuQuota);
 				conInfo->cpuQuota = min((int)(conInfo->cpuQuota+quotaChaneFactor),maxCpuQuota);
 				cout<<time_since_epoch()<<"-"<<"in_safe_area-quota_info: increasing quota to, " << conInfo->cpuQuota << endl;
-				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag);
+				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag,dockerID);
  
 			}
 			else if(ipc>=lowerBound && ipc < stableBound)
 			{
 				conInfo->cpuQuota = max((int)(conInfo->cpuQuota*cpuQuotaDecreasingRate),minCpuQuota);
                         	cout<<time_since_epoch()<<"-"<<"in_unsafe_area-quota_info: deacreasing quota to, " << conInfo->cpuQuota<< endl;
-				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag);
+				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag,dockerID);
 			}
 			else if(ipc<lowerBound)
 			{
 				conInfo->cpuQuota = minCpuQuota;
 				cout<<time_since_epoch()<<"-"<<"passing_lower_bound-quota_info: deacresing quota to " << conInfo->cpuQuota << endl;
-				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag);
+				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag,dockerID);
 				reFillMovingWindows=true;
 				resetVmInfo(vmInfo); 
 			}
@@ -536,6 +576,8 @@ int main(int argc,char** argv)
     	if(timeToRun<0)
         {
                 cout<<time_since_epoch()<<"-"<<"time to run is done!" << endl;
+		
+		setCpuQuotaForDocker(-1,1,dockerID);
 
                 runCommand("sudo sh -c \"echo \"-1\" > /sys/fs/cgroup/cpu,cpuacct/docker/cpu.cfs_quota_us\"");
 		return 0;
