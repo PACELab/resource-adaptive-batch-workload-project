@@ -381,6 +381,7 @@ int main(int argc,char** argv)
     double intervalLength=1; 
     
     std::string dockerID="";
+    cout << "input size: " << argc << endl;
 
     try{
     	windowSize = stoi(argv[1]);
@@ -391,11 +392,11 @@ int main(int argc,char** argv)
     	timeToRun = stoi(argv[6]);
 	vmName=argv[7];
 	cpuQuotaFlag=stoi(argv[8]);
-	if(argc==10)
+	if(argc>=10)
 	{
 		intervalLength=stof(argv[9]);
 	}
-	if(argc==11)
+	if(argc>=11)
 	{
 		dockerID=argv[10]; 
 	}
