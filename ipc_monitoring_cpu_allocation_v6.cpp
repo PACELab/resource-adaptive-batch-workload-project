@@ -438,8 +438,8 @@ int main(int argc,char** argv)
     {
     	conInfo->cpuQuota = minCpuQuota;
     	setCpuQuotaForDocker(conInfo->cpuQuota,1,dockerID);
-    	cout << time_since_epoch() <<"-"<<"setting CPU quota to min and sleep 10 seconds to make sure it got affected!" << endl; 
-    	std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+    	cout << time_since_epoch() <<"-"<<"setting CPU quota to min and sleep 10 seconds to make sure it got affected!" << endl;
+	std::this_thread::sleep_for(std::chrono::milliseconds(10000));
     }
     else
     {
@@ -451,7 +451,10 @@ int main(int argc,char** argv)
     }
     cout <<time_since_epoch()<<"-"<<"monitoring IPC for first window"<<endl; 
 
-    
+   
+
+     cout <<"StartTime: "<<time_since_epoch()<<endl;
+
 
     for (int i=0;i<windowSize;i++)
     {
@@ -470,7 +473,8 @@ int main(int argc,char** argv)
         	vmInfo->stdeviation= sqrt((vmInfo->sum2/vmInfo->windowSize)-(vmInfo->mean*vmInfo->mean));	
         
         	//cout <<time_since_epoch()<<"-"<<"ipc_info: "<< ipc << "," << vmInfo->mean <<","<<vmInfo->stdeviation<<"," << lowerBound <<"," <<stableBound << ","<<quotaIncreaingBound<<","<<quotaIncreasingUpperBound<<","<<phaseChangeBound <<"," <<reFillMovingWindows<<"," <<llcMisses <<"," << cacheMisses << ","<<conInfo->cpuQuota<<endl;
-	  	cout <<time_since_epoch()<<"-"<<"ipc_info: "<< ipc << "," << vmInfo->mean <<","<<vmInfo->stdeviation<<"," << lowerBound <<"," <<stableBound << ","<<quotaIncreaingBound<<","<<quotaIncreasingUpperBound <<","<<phaseChangeBound <<"," <<reFillMovingWindows<<","<<conInfo->cpuQuota<<endl;
+	  	cout <<"ipc_info: "<< ipc << "," << vmInfo->mean <<","<<vmInfo->stdeviation<<"," << lowerBound <<"," <<stableBound << ","<<quotaIncreaingBound<<","<<quotaIncreasingUpperBound <<","<<phaseChangeBound <<"," <<reFillMovingWindows<<","<<conInfo->cpuQuota<<endl;
+		//cout << "ipc_info: "<< ipc << endl; 
 
 	}
 	else
@@ -503,15 +507,18 @@ int main(int argc,char** argv)
 
 	if(ipc!=0)
 	{
-		cout <<time_since_epoch()<<"-"<<"ipc_info: "<< ipc << "," << vmInfo->mean <<","<<vmInfo->stdeviation<<"," << lowerBound <<"," <<stableBound << ","<<quotaIncreaingBound<<","<<quotaIncreasingUpperBound<<","<<phaseChangeBound <<"," <<reFillMovingWindows<<","<<conInfo->cpuQuota<< endl;
+		//cout <<time_since_epoch()<<"-"<<"ipc_info: "<< ipc << "," << vmInfo->mean <<","<<vmInfo->stdeviation<<"," << lowerBound <<"," <<stableBound << ","<<quotaIncreaingBound<<","<<quotaIncreasingUpperBound<<","<<phaseChangeBound <<"," <<reFillMovingWindows<<","<<conInfo->cpuQuota<< endl;
+		cout <<"ipc_info: "<< ipc << "," << vmInfo->mean <<","<<vmInfo->stdeviation<<"," << lowerBound <<"," <<stableBound << ","<<quotaIncreaingBound<<","<<quotaIncreasingUpperBound<<","<<phaseChangeBound <<"," <<reFillMovingWindows<<","<<conInfo->cpuQuota<< endl;
 
+		//cout << "ipc_info: "<< ipc << endl;
 
 		if(!reFillMovingWindows)
 		{
 			if(ipc>phaseChangeBound)
 			{
 				conInfo->cpuQuota = minCpuQuota;
-                		cout<<time_since_epoch()<<"-"<<"passing_uperbound-quota_info: deacresing quota to " << conInfo->cpuQuota << endl;
+                		//cout<<time_since_epoch()<<"-"<<"passing_uperbound-quota_info: deacresing quota to " << conInfo->cpuQuota << endl;
+				cout <<"passing_uperbound-quota_info: deacresing quota to " << conInfo->cpuQuota << endl;
 				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag,dockerID);
 				reFillMovingWindows=true;
 				resetVmInfo(vmInfo); 
@@ -520,20 +527,24 @@ int main(int argc,char** argv)
 			{
 				//conInfo->cpuQuota = min((int)(conInfo->cpuQuota*cpuQuotaIncreasingRate),maxCpuQuota);
 				conInfo->cpuQuota = min((int)(conInfo->cpuQuota+quotaChaneFactor),maxCpuQuota);
-				cout<<time_since_epoch()<<"-"<<"in_safe_area-quota_info: increasing quota to, " << conInfo->cpuQuota << endl;
+				//cout<<time_since_epoch()<<"-"<<"in_safe_area-quota_info: increasing quota to, " << conInfo->cpuQuota << endl;
+				cout <<"in_safe_area-quota_info: increasing quota to, " << conInfo->cpuQuota << endl;
+
 				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag,dockerID);
  
 			}
 			else if(ipc>=lowerBound && ipc < stableBound)
 			{
 				conInfo->cpuQuota = max((int)(conInfo->cpuQuota*cpuQuotaDecreasingRate),minCpuQuota);
-                        	cout<<time_since_epoch()<<"-"<<"in_unsafe_area-quota_info: deacreasing quota to, " << conInfo->cpuQuota<< endl;
+                        	//cout<<time_since_epoch()<<"-"<<"in_unsafe_area-quota_info: deacreasing quota to, " << conInfo->cpuQuota<< endl;
+				cout <<"in_unsafe_area-quota_info: deacreasing quota to, " << conInfo->cpuQuota<< endl;
 				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag,dockerID);
 			}
 			else if(ipc<lowerBound)
 			{
 				conInfo->cpuQuota = minCpuQuota;
-				cout<<time_since_epoch()<<"-"<<"passing_lower_bound-quota_info: deacresing quota to " << conInfo->cpuQuota << endl;
+				//cout<<time_since_epoch()<<"-"<<"passing_lower_bound-quota_info: deacresing quota to " << conInfo->cpuQuota << endl;
+				cout<<"passing_lower_bound-quota_info: deacresing quota to " << conInfo->cpuQuota << endl;
 				setCpuQuotaForDocker(conInfo->cpuQuota,cpuQuotaFlag,dockerID);
 				reFillMovingWindows=true;
 				resetVmInfo(vmInfo); 
@@ -576,7 +587,8 @@ int main(int argc,char** argv)
 	timeToRun--;
     	if(timeToRun<0)
         {
-                cout<<time_since_epoch()<<"-"<<"time to run is done!" << endl;
+                cout <<"EndTime: "<<time_since_epoch()<<endl;
+		cout<<time_since_epoch()<<"-"<<"time to run is done!" << endl;
 		
 		setCpuQuotaForDocker(-1,1,dockerID);
 
